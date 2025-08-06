@@ -26,3 +26,5 @@ bun.lockb
 
 # Misc
 *.local
+
+/lib/generated/prisma
