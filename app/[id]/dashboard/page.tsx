@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -11,27 +11,41 @@ import SendModal from "@/components/send-modal"
 import ReceiveModal from "@/components/receive-modal"
 import TransactionHistory from "@/components/transaction-history"
 import MarketData from "@/components/market-data"
+import CreateAccountDialog from "@/components/create-account-dialog"
 
 interface Vault {
   id: string
   label: string
+  address: string | null
   createdAt: string
   updatedAt: string
 }
 
 export default function Dashboard() {
   const router = useRouter()
+  const params = useParams()
+  const walletId = params.walletId as string
+  
   const [showBalance, setShowBalance] = useState(true)
   const [showSendModal, setShowSendModal] = useState(false)
   const [showReceiveModal, setShowReceiveModal] = useState(false)
+  const [showCreateAccountDialog, setShowCreateAccountDialog] = useState(false)
   const [vaults, setVaults] = useState<Vault[]>([])
+  const [selectedWallet, setSelectedWallet] = useState<Vault | null>(null)
   const [loading, setLoading] = useState(true)
-  const [creatingAccount, setCreatingAccount] = useState(false)
 
   // Fetch vaults on component mount
   useEffect(() => {
     fetchVaults()
   }, [])
+
+  // Set selected wallet when vaults are loaded or walletId changes
+  useEffect(() => {
+    if (vaults.length > 0 && walletId) {
+      const wallet = vaults.find(vault => vault.id === walletId)
+      setSelectedWallet(wallet || null)
+    }
+  }, [vaults, walletId])
 
   const fetchVaults = async () => {
     try {
@@ -40,11 +54,20 @@ export default function Dashboard() {
         credentials: 'include',
       })
       
+      console.log('Fetch vaults response status:', response.status)
+      
       if (response.ok) {
         const data = await response.json()
+        console.log('Vaults data:', data)
         setVaults(data.vaults)
       } else {
-        console.error('Failed to fetch vaults')
+        const errorData = await response.json()
+        console.error('Failed to fetch vaults:', errorData)
+        if (response.status === 401) {
+          console.error('Authentication failed - please login first')
+          // Redirect to login page
+          router.push('/')
+        }
       }
     } catch (error) {
       console.error('Error fetching vaults:', error)
@@ -53,29 +76,8 @@ export default function Dashboard() {
     }
   }
 
-  const createNewAccount = async () => {
-    try {
-      setCreatingAccount(true)
-      const response = await fetch('/api/accounts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ label: 'New Wallet' }),
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        setVaults([data.vault, ...vaults])
-      } else {
-        console.error('Failed to create account')
-      }
-    } catch (error) {
-      console.error('Error creating account:', error)
-    } finally {
-      setCreatingAccount(false)
-    }
+  const handleAccountCreated = (newVault: Vault) => {
+    setVaults([newVault, ...vaults])
   }
 
   const handleLogout = async () => {
@@ -88,6 +90,10 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Logout error:', error)
     }
+  }
+
+  const handleWalletSelect = (vault: Vault) => {
+    router.push(`/${params.id}/dashboard/${vault.id}/actions`)
   }
 
   // Loading state
@@ -142,16 +148,11 @@ export default function Dashboard() {
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-white">Your Accounts</h2>
             <Button 
-              onClick={createNewAccount}
-              disabled={creatingAccount}
+              onClick={() => setShowCreateAccountDialog(true)}
               className="bg-blue-600 hover:bg-blue-700"
             >
-              {creatingAccount ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Plus className="w-4 h-4 mr-2" />
-              )}
-              {creatingAccount ? 'Creating...' : 'Create Account'}
+              <Plus className="w-4 h-4 mr-2" />
+              Create Account
             </Button>
           </div>
 
@@ -166,17 +167,12 @@ export default function Dashboard() {
                     <h3 className="text-xl font-semibold text-white mb-2">No accounts yet</h3>
                     <p className="text-slate-400 mb-6">Create your first wallet to get started</p>
                     <Button 
-                      onClick={createNewAccount}
-                      disabled={creatingAccount}
+                      onClick={() => setShowCreateAccountDialog(true)}
                       size="lg"
                       className="bg-blue-600 hover:bg-blue-700"
                     >
-                      {creatingAccount ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Plus className="w-4 h-4 mr-2" />
-                      )}
-                      {creatingAccount ? 'Creating...' : 'Create Your First Account'}
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Your First Account
                     </Button>
                   </div>
                 </div>
@@ -185,7 +181,13 @@ export default function Dashboard() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {vaults.map((vault) => (
-                <Card key={vault.id} className="bg-slate-800/50 border-slate-700 hover:bg-slate-800/70 transition-colors cursor-pointer">
+                <Card 
+                  key={vault.id} 
+                  className={`bg-slate-800/50 border-slate-700 hover:bg-slate-800/70 transition-colors cursor-pointer ${
+                    selectedWallet?.id === vault.id ? 'ring-2 ring-blue-500 bg-slate-800/80' : ''
+                  }`}
+                  onClick={() => handleWalletSelect(vault)}
+                >
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
@@ -195,12 +197,29 @@ export default function Dashboard() {
                         <div>
                           <CardTitle className="text-white">{vault.label}</CardTitle>
                           <CardDescription className="text-slate-400">
-                            Created {new Date(vault.createdAt).toLocaleDateString()}
+                            {vault.address ? (
+                              <div className="flex items-center space-x-2">
+                                <span>{vault.address.slice(0, 6)}...{vault.address.slice(-4)}</span>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="p-1 text-slate-400 hover:text-white"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    navigator.clipboard.writeText(vault.address!)
+                                  }}
+                                >
+                                  <Copy className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <span>No address</span>
+                            )}
                           </CardDescription>
                         </div>
                       </div>
                       <Badge variant="secondary" className="bg-slate-700 text-slate-300">
-                        Active
+                        {selectedWallet?.id === vault.id ? 'Selected' : 'Active'}
                       </Badge>
                     </div>
                   </CardHeader>
@@ -214,6 +233,18 @@ export default function Dashboard() {
                         <span className="text-slate-400">Assets</span>
                         <span className="text-white font-medium">-</span>
                       </div>
+                      <div className="pt-2">
+                        <Button 
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleWalletSelect(vault)
+                          }}
+                          size="sm"
+                          className="w-full bg-blue-600 hover:bg-blue-700"
+                        >
+                          View Details
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -222,14 +253,14 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Wallet Overview - Only show if user has accounts */}
-        {vaults.length > 0 && (
+        {/* Selected Wallet Overview - Only show if a wallet is selected */}
+        {selectedWallet && (
           <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-white flex items-center space-x-2">
-                    <span>Total Balance</span>
+                    <span>{selectedWallet.label} Balance</span>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -240,11 +271,21 @@ export default function Dashboard() {
                     </Button>
                   </CardTitle>
                   <CardDescription className="text-slate-400">
-                    {/* Wallet address placeholder */}
-                    <span className="italic text-slate-500">No address</span>
-                    <Button variant="ghost" size="sm" className="ml-2 p-1 text-slate-400 hover:text-white">
-                      <Copy className="w-3 h-3" />
-                    </Button>
+                    {selectedWallet.address ? (
+                      <div className="flex items-center space-x-2">
+                        <span>{selectedWallet.address}</span>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="p-1 text-slate-400 hover:text-white"
+                          onClick={() => navigator.clipboard.writeText(selectedWallet.address!)}
+                        >
+                          <Copy className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <span className="italic text-slate-500">No address</span>
+                    )}
                   </CardDescription>
                 </div>
                 <div className="flex space-x-2">
@@ -277,8 +318,8 @@ export default function Dashboard() {
           </Card>
         )}
 
-        {/* Main Content Tabs - Only show if user has accounts */}
-        {vaults.length > 0 && (
+        {/* Main Content Tabs - Only show if a wallet is selected */}
+        {selectedWallet && (
           <Tabs defaultValue="assets" className="w-full">
             <TabsList className="grid w-full grid-cols-3 bg-slate-800/50">
               <TabsTrigger value="assets" className="data-[state=active]:bg-slate-700">Assets</TabsTrigger>
@@ -306,6 +347,12 @@ export default function Dashboard() {
 
       <SendModal open={showSendModal} onOpenChange={setShowSendModal} />
       <ReceiveModal open={showReceiveModal} onOpenChange={setShowReceiveModal} />
+      <CreateAccountDialog 
+        open={showCreateAccountDialog} 
+        onOpenChange={setShowCreateAccountDialog}
+        onAccountCreated={handleAccountCreated}
+        existingAccountsCount={vaults.length}
+      />
     </div>
   )
 }
