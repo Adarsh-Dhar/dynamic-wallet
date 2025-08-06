@@ -13,3 +13,21 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model User {
+  id              String     @id @default(uuid())
+  passwordHash    String     // Hashed password (bcrypt/argon2)
+  vaults          Vault[]    // One or more encrypted vaults
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+}
+
+model Vault {
+  id              String     @id @default(uuid())
+  userId          String
+  user            User       @relation(fields: [userId], references: [id])
+  label           String     // Optional: e.g., "Default Wallet"
+  encryptedData   String     // The entire encrypted vault (includes multiple keypairs)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+}
