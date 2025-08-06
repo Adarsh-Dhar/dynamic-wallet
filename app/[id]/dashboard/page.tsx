@@ -1,20 +1,34 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowUpRight, ArrowDownLeft, Copy, Eye, EyeOff, Settings, TrendingUp, Wallet, QrCode, Send, Download } from 'lucide-react'
+import { ArrowUpRight, ArrowDownLeft, Copy, Eye, EyeOff, Settings, TrendingUp, Wallet, QrCode, Send, Download, LogOut } from 'lucide-react'
 import SendModal from "@/components/send-modal"
 import ReceiveModal from "@/components/receive-modal"
 import TransactionHistory from "@/components/transaction-history"
 import MarketData from "@/components/market-data"
 
 export default function Dashboard() {
+  const router = useRouter()
   const [showBalance, setShowBalance] = useState(true)
   const [showSendModal, setShowSendModal] = useState(false)
   const [showReceiveModal, setShowReceiveModal] = useState(false)
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      })
+      router.push('/')
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
+  }
 
   const walletAddress = "0x742d35Cc6634C0532925a3b8D4C2C4e4C4C4C4C4"
   const totalBalance = 2847.32
@@ -37,7 +51,7 @@ export default function Dashboard() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-white">CryptoVault</h1>
-              <p className="text-sm text-slate-400">Account 1</p>
+              <p className="text-sm text-slate-400">Your Wallet</p>
             </div>
           </div>
           <div className="flex items-center space-x-2">
@@ -47,6 +61,14 @@ export default function Dashboard() {
             </div>
             <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white">
               <Settings className="w-5 h-5" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="text-slate-400 hover:text-white"
+              onClick={handleLogout}
+            >
+              <LogOut className="w-5 h-5" />
             </Button>
           </div>
         </div>
