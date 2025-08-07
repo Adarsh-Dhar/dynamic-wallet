@@ -84,7 +84,7 @@ export default function WalletActions() {
   }
 
   const handleBack = () => {
-    router.push(`/dashboard/${params.id}`)
+    router.push(`/${params.id}/dashboard`)
   }
 
   const copyAddress = () => {

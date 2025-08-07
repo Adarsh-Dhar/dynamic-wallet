@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { ArrowRight, Scan, Loader2, AlertCircle, CheckCircle, Shield, Lock, Eye, EyeOff, Fingerprint, Mail, Clock, AlertTriangle } from 'lucide-react'
 import { sendUSDC, getUSDCBalance, checkNetwork, switchToSepolia, USDCBalance } from "@/lib/usdc"
 import { dynamicApprovalManager, ApprovalRequest, ApprovalResponse } from "@/lib/approval"
+import PasswordDialog from "@/components/password-dialog"
 import { toast } from "sonner"
 
 interface SendModalProps {
@@ -31,12 +32,16 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
   
   // Approval system states
   const [approvalResponse, setApprovalResponse] = useState<ApprovalResponse | null>(null)
-  const [approvalStep, setApprovalStep] = useState<'initial' | 'passkey' | 'otp' | 'biometric' | 'manual' | 'compliance' | 'complete'>('initial')
+  const [approvalStep, setApprovalStep] = useState<'initial' | 'password' | 'passkey' | 'otp' | 'biometric' | 'manual' | 'compliance' | 'complete'>('initial')
   const [otpCode, setOtpCode] = useState("")
   const [showOtpInput, setShowOtpInput] = useState(false)
   const [passkeyVerified, setPasskeyVerified] = useState(false)
+  const [passwordVerified, setPasswordVerified] = useState(false)
   const [biometricVerified, setBiometricVerified] = useState(false)
   const [manualApproved, setManualApproved] = useState(false)
+
+  // Password dialog state
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false)
 
   const assets = [
     { symbol: "USDC", name: "USD Coin", balance: usdcBalance?.balance || "0", icon: "💵" },
@@ -52,44 +57,17 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
   }, [open, selectedAsset, vaultId])
 
   const fetchUSDCBalance = async () => {
-    if (!vaultId) {
-      setErrorMessage('No wallet selected')
-      return
-    }
-
+    if (!vaultId) return
+    
+    setBalanceLoading(true)
     try {
-      setBalanceLoading(true)
-      setErrorMessage("")
-      
       const balance = await getUSDCBalance(vaultId)
       setUsdcBalance(balance)
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to fetch USDC balance:', error)
-      setErrorMessage(error.message || 'Failed to fetch balance')
+      toast.error('Failed to fetch balance')
     } finally {
       setBalanceLoading(false)
-    }
-  }
-
-  const getRiskLevelColor = (riskLevel: string) => {
-    switch (riskLevel) {
-      case 'low': return 'bg-green-500/20 text-green-400 border-green-500/50'
-      case 'medium': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50'
-      case 'high': return 'bg-orange-500/20 text-orange-400 border-orange-500/50'
-      case 'very-high': return 'bg-red-500/20 text-red-400 border-red-500/50'
-      case 'extreme': return 'bg-purple-500/20 text-purple-400 border-purple-500/50'
-      default: return 'bg-slate-500/20 text-slate-400 border-slate-500/50'
-    }
-  }
-
-  const getRiskLevelIcon = (riskLevel: string) => {
-    switch (riskLevel) {
-      case 'low': return <Shield className="w-4 h-4" />
-      case 'medium': return <Lock className="w-4 h-4" />
-      case 'high': return <AlertTriangle className="w-4 h-4" />
-      case 'very-high': return <AlertTriangle className="w-4 h-4" />
-      case 'extreme': return <AlertTriangle className="w-4 h-4" />
-      default: return <Shield className="w-4 h-4" />
     }
   }
 
@@ -111,7 +89,7 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
       deviceFingerprint: 'device123', // This would be generated from device info
       ipAddress: '192.168.1.1', // This would come from request
       passkeyVerified,
-      biometricVerified,
+      passwordVerified,
       otpCode: showOtpInput ? otpCode : undefined,
       manualApproved
     }
@@ -164,6 +142,12 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
       }
 
       // Handle different approval requirements
+      if (approval.requiresPassword && !passwordVerified) {
+        setApprovalStep('password')
+        setShowPasswordDialog(true)
+        return
+      }
+
       if (approval.requiresPasskey && !passkeyVerified) {
         setApprovalStep('passkey')
         return
@@ -206,6 +190,21 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
     }
   }
 
+  const handlePasswordVerified = () => {
+    setPasswordVerified(true)
+    setApprovalStep('initial')
+    // Re-check approval with updated state
+    checkApproval().then(approval => {
+      setApprovalResponse(approval)
+      if (approval.approved) {
+        executeTransaction()
+      }
+    }).catch(error => {
+      console.error('Failed to re-check approval:', error)
+      toast.error('Failed to process approval')
+    })
+  }
+
   const executeTransaction = async () => {
     try {
       // Validate amount
@@ -225,6 +224,9 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
       }
 
       // Send USDC
+      if (!vaultId) {
+        throw new Error('No wallet selected')
+      }
       const txHash = await sendUSDC(vaultId, amount, recipient)
       
       setTransactionStatus('success')
@@ -260,8 +262,10 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
     setOtpCode("")
     setShowOtpInput(false)
     setPasskeyVerified(false)
+    setPasswordVerified(false)
     setBiometricVerified(false)
     setManualApproved(false)
+    setShowPasswordDialog(false)
   }
 
   const handlePasskeyVerification = async () => {
@@ -344,6 +348,32 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
     const riskInfo = dynamicApprovalManager.getRiskLevelInfo(approvalResponse.riskLevel)
 
     switch (approvalStep) {
+      case 'password':
+        return (
+          <Card className="bg-slate-700/50 border-slate-600">
+            <CardContent className="p-4 space-y-4">
+              <div className="flex items-center space-x-2">
+                <Badge className={getRiskLevelColor(approvalResponse.riskLevel)}>
+                  {getRiskLevelIcon(approvalResponse.riskLevel)}
+                  {riskInfo.name}
+                </Badge>
+              </div>
+              <div className="text-sm text-slate-300">
+                <p className="mb-2">{riskInfo.description}</p>
+                <p className="text-slate-400">Amount: ${amount} USDC</p>
+              </div>
+              <Button 
+                onClick={() => setShowPasswordDialog(true)}
+                className="w-full bg-blue-600 hover:bg-blue-700"
+                disabled={loading}
+              >
+                <Lock className="w-4 h-4 mr-2" />
+                Enter Password
+              </Button>
+            </CardContent>
+          </Card>
+        )
+
       case 'passkey':
         return (
           <Card className="bg-slate-700/50 border-slate-600">
@@ -440,13 +470,12 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
                 </Badge>
               </div>
               <div className="text-sm text-slate-300">
-                <p className="mb-2">Manual approval required for this transaction</p>
+                <p className="mb-2">Manual approval required. Please contact support.</p>
                 <p className="text-slate-400">Amount: ${amount} USDC</p>
-                <p className="text-slate-400">Risk Score: {approvalResponse.riskScore}</p>
               </div>
-              <div className="flex items-center space-x-2 p-3 bg-yellow-900/20 border border-yellow-600/50 rounded-md">
-                <Clock className="w-4 h-4 text-yellow-400" />
-                <span className="text-sm text-yellow-200">Waiting for manual approval...</span>
+              <div className="flex items-center space-x-2 text-yellow-400">
+                <Clock className="w-4 h-4" />
+                <span className="text-sm">Waiting for approval...</span>
               </div>
             </CardContent>
           </Card>
@@ -463,13 +492,12 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
                 </Badge>
               </div>
               <div className="text-sm text-slate-300">
-                <p className="mb-2">Compliance review required for this transaction</p>
+                <p className="mb-2">Compliance review required for this transaction.</p>
                 <p className="text-slate-400">Amount: ${amount} USDC</p>
-                <p className="text-slate-400">Risk Score: {approvalResponse.riskScore}</p>
               </div>
-              <div className="flex items-center space-x-2 p-3 bg-purple-900/20 border border-purple-600/50 rounded-md">
-                <AlertTriangle className="w-4 h-4 text-purple-400" />
-                <span className="text-sm text-purple-200">Compliance review in progress...</span>
+              <div className="flex items-center space-x-2 text-red-400">
+                <AlertTriangle className="w-4 h-4" />
+                <span className="text-sm">Transaction blocked for compliance review</span>
               </div>
             </CardContent>
           </Card>
@@ -480,172 +508,198 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
     }
   }
 
+  const getRiskLevelColor = (riskLevel: string) => {
+    switch (riskLevel) {
+      case 'low': return 'bg-green-600 hover:bg-green-700'
+      case 'medium': return 'bg-yellow-600 hover:bg-yellow-700'
+      case 'high': return 'bg-orange-600 hover:bg-orange-700'
+      case 'very-high': return 'bg-red-600 hover:bg-red-700'
+      case 'extreme': return 'bg-purple-600 hover:bg-purple-700'
+      default: return 'bg-gray-600 hover:bg-gray-700'
+    }
+  }
+
+  const getRiskLevelIcon = (riskLevel: string) => {
+    switch (riskLevel) {
+      case 'low': return '🟢'
+      case 'medium': return '🟡'
+      case 'high': return '🟠'
+      case 'very-high': return '🔴'
+      case 'extreme': return '🟣'
+      default: return '⚪'
+    }
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-md">
-        <DialogHeader>
-          <DialogTitle>Send USDC</DialogTitle>
-          <DialogDescription className="text-slate-400">
-            Send USDC to another wallet address on Sepolia network
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="space-y-6">
-          {/* Asset Selection */}
-          <div className="space-y-2">
-            <Label>Select Asset</Label>
-            <Select value={selectedAsset} onValueChange={setSelectedAsset}>
-              <SelectTrigger className="bg-slate-700 border-slate-600">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-slate-700 border-slate-600">
-                {assets.map((asset) => (
-                  <SelectItem key={asset.symbol} value={asset.symbol}>
-                    <div className="flex items-center space-x-2">
-                      <span>{asset.icon}</span>
-                      <span>{asset.symbol}</span>
-                      <span className="text-slate-400">
-                        {balanceLoading ? (
-                          <Loader2 className="w-3 h-3 animate-spin inline" />
-                        ) : (
-                          `(${asset.balance})`
-                        )}
-                      </span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Send {selectedAsset}</DialogTitle>
+            <DialogDescription>
+              Transfer {selectedAsset} to another wallet address
+            </DialogDescription>
+          </DialogHeader>
 
-          {/* Error Message */}
-          {errorMessage && (
-            <div className="flex items-center space-x-2 p-3 bg-red-900/20 border border-red-600/50 rounded-md">
-              <AlertCircle className="w-4 h-4 text-red-400" />
-              <span className="text-sm text-red-200">{errorMessage}</span>
-            </div>
-          )}
-
-          {/* Recipient Address */}
-          <div className="space-y-2">
-            <Label>Recipient Address</Label>
-            <div className="flex space-x-2">
-              <Input
-                placeholder="0x..."
-                value={recipient}
-                onChange={(e) => setRecipient(e.target.value)}
-                className="bg-slate-700 border-slate-600"
-                disabled={loading}
-              />
-              <Button variant="outline" size="icon" className="border-slate-600" disabled={loading}>
-                <Scan className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Amount */}
-          <div className="space-y-2">
-            <Label>Amount</Label>
+          <div className="space-y-4">
+            {/* Asset Selection */}
             <div className="space-y-2">
-              <Input
-                placeholder="0.0"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="bg-slate-700 border-slate-600"
-                disabled={loading}
-                type="number"
-                step="0.000001"
-              />
-              <div className="flex justify-between text-sm text-slate-400">
-                <span>
-                  Available: {balanceLoading ? (
-                    <Loader2 className="w-3 h-3 animate-spin inline" />
-                  ) : (
-                    `${usdcBalance?.balance || '0'} USDC`
-                  )}
-                </span>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-blue-400 p-0 h-auto"
-                  onClick={handleMaxAmount}
-                  disabled={loading || !usdcBalance}
+              <Label htmlFor="asset">Asset</Label>
+              <Select value={selectedAsset} onValueChange={setSelectedAsset}>
+                <SelectTrigger className="bg-slate-700 border-slate-600">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-700 border-slate-600">
+                  {assets.map((asset) => (
+                    <SelectItem key={asset.symbol} value={asset.symbol}>
+                      <div className="flex items-center space-x-2">
+                        <span>{asset.icon}</span>
+                        <span>{asset.name}</span>
+                        <span className="text-slate-400">({asset.balance})</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Recipient Address */}
+            <div className="space-y-2">
+              <Label htmlFor="recipient">Recipient Address</Label>
+              <div className="relative">
+                <Input
+                  id="recipient"
+                  placeholder="0x..."
+                  value={recipient}
+                  onChange={(e) => setRecipient(e.target.value)}
+                  className="bg-slate-700 border-slate-600 pr-10"
+                />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="absolute right-1 top-1 h-6 w-6 p-0"
                 >
-                  Max
+                  <Scan className="h-4 w-4" />
                 </Button>
               </div>
             </div>
-          </div>
 
-          {/* Risk Level Preview */}
-          {amount && recipient && approvalStep === 'initial' && (
-            <Card className="bg-slate-700/50 border-slate-600">
-              <CardContent className="p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Risk Level</span>
-                  <Badge className={getRiskLevelColor(dynamicApprovalManager.getRiskLevel(parseFloat(amount)))}>
-                    {getRiskLevelIcon(dynamicApprovalManager.getRiskLevel(parseFloat(amount)))}
-                    {dynamicApprovalManager.getRiskLevelInfo(dynamicApprovalManager.getRiskLevel(parseFloat(amount))).name}
-                  </Badge>
+            {/* Amount */}
+            <div className="space-y-2">
+              <Label htmlFor="amount">Amount</Label>
+              <div className="relative">
+                <Input
+                  id="amount"
+                  type="number"
+                  placeholder="0.00"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="bg-slate-700 border-slate-600 pr-16"
+                />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleMaxAmount}
+                  className="absolute right-1 top-1 h-6 w-6 p-0 text-xs"
+                >
+                  MAX
+                </Button>
+              </div>
+              {balanceLoading && (
+                <div className="flex items-center space-x-2 text-sm text-slate-400">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <span>Loading balance...</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Network Fee</span>
-                  <span>~$0.50</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Total</span>
-                  <span className="font-semibold">{amount} USDC</span>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Approval Step */}
-          {approvalStep !== 'initial' && renderApprovalStep()}
-
-          {/* Transaction Status */}
-          {transactionStatus === 'pending' && approvalStep === 'initial' && (
-            <div className="flex items-center space-x-2 p-3 bg-blue-900/20 border border-blue-600/50 rounded-md">
-              <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
-              <span className="text-sm text-blue-200">Processing transaction...</span>
-            </div>
-          )}
-
-          {transactionStatus === 'success' && (
-            <div className="flex items-center space-x-2 p-3 bg-green-900/20 border border-green-600/50 rounded-md">
-              <CheckCircle className="w-4 h-4 text-green-400" />
-              <span className="text-sm text-green-200">Transaction successful!</span>
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="flex space-x-3">
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                onOpenChange(false)
-                resetApprovalStates()
-              }} 
-              className="flex-1 border-slate-600"
-              disabled={loading}
-            >
-              Cancel
-            </Button>
-            <Button 
-              className="flex-1 bg-blue-600 hover:bg-blue-700"
-              onClick={handleSend}
-              disabled={loading || !recipient || !amount || transactionStatus === 'success' || !vaultId || approvalStep !== 'initial'}
-            >
-              {loading ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <ArrowRight className="w-4 h-4 mr-2" />
               )}
-              Send
-            </Button>
+            </div>
+
+            {/* Error Message */}
+            {errorMessage && (
+              <div className="flex items-center space-x-2 p-3 bg-red-900/20 border border-red-600/50 rounded-md">
+                <AlertCircle className="w-4 h-4 text-red-400" />
+                <span className="text-sm text-red-200">{errorMessage}</span>
+              </div>
+            )}
+
+            {/* Transaction Summary */}
+            {amount && recipient && approvalStep === 'initial' && (
+              <Card className="bg-slate-700/50 border-slate-600">
+                <CardContent className="p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Risk Level</span>
+                    <Badge className={getRiskLevelColor(dynamicApprovalManager.getRiskLevel(parseFloat(amount)))}>
+                      {getRiskLevelIcon(dynamicApprovalManager.getRiskLevel(parseFloat(amount)))}
+                      {dynamicApprovalManager.getRiskLevelInfo(dynamicApprovalManager.getRiskLevel(parseFloat(amount))).name}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">Network Fee</span>
+                    <span>~$0.50</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">Total</span>
+                    <span className="font-semibold">{amount} USDC</span>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Approval Step */}
+            {approvalStep !== 'initial' && renderApprovalStep()}
+
+            {/* Transaction Status */}
+            {transactionStatus === 'pending' && approvalStep === 'initial' && (
+              <div className="flex items-center space-x-2 p-3 bg-blue-900/20 border border-blue-600/50 rounded-md">
+                <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
+                <span className="text-sm text-blue-200">Processing transaction...</span>
+              </div>
+            )}
+
+            {transactionStatus === 'success' && (
+              <div className="flex items-center space-x-2 p-3 bg-green-900/20 border border-green-600/50 rounded-md">
+                <CheckCircle className="w-4 h-4 text-green-400" />
+                <span className="text-sm text-green-200">Transaction successful!</span>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex space-x-3">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  onOpenChange(false)
+                  resetApprovalStates()
+                }} 
+                className="flex-1 border-slate-600"
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button 
+                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                onClick={handleSend}
+                disabled={loading || !recipient || !amount || transactionStatus === 'success' || !vaultId || approvalStep !== 'initial'}
+              >
+                {loading ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <ArrowRight className="w-4 h-4 mr-2" />
+                )}
+                Send
+              </Button>
+            </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      {/* Password Dialog */}
+      <PasswordDialog
+        open={showPasswordDialog}
+        onOpenChange={setShowPasswordDialog}
+        onPasswordVerified={handlePasswordVerified}
+        amount={parseFloat(amount) || 0}
+        toAddress={recipient}
+      />
+    </>
   )
 }

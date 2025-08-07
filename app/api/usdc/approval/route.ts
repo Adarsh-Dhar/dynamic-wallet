@@ -4,7 +4,7 @@ import { dynamicApprovalManager, ApprovalRequest } from '@/lib/approval'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { amount, toAddress, fromAddress, userCountry, deviceFingerprint, ipAddress, userLocation, passkeyVerified, biometricVerified, otpCode, manualApproved } = body
+    const { amount, toAddress, fromAddress, userCountry, deviceFingerprint, ipAddress, userLocation, passkeyVerified, passwordVerified, otpCode, manualApproved } = body
 
     // Validate required fields
     if (!amount || !toAddress || !fromAddress) {
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       ipAddress,
       userLocation,
       passkeyVerified,
-      biometricVerified,
+      passwordVerified,
       otpCode,
       manualApproved
     }

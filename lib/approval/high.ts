@@ -4,13 +4,9 @@ export interface HighRiskApproval {
   fromAddress: string;
   timestamp: number;
   requiresPasskey: boolean;
-  requiresOTP: boolean;
   passkeyVerified: boolean;
-  otpVerified: boolean;
   deviceFingerprint?: string;
   ipAddress?: string;
-  emailSent?: boolean;
-  otpCode?: string;
 }
 
 export interface HighRiskPolicy {
@@ -18,9 +14,7 @@ export interface HighRiskPolicy {
   maxAmount: number;
   maxDailyLimit: number;
   requirePasskey: boolean;
-  requireOTP: boolean;
   requireDeviceVerification: boolean;
-  requireEmailConfirmation: boolean;
   allowedCountries: string[];
   velocityCheck: boolean;
   addressRiskCheck: boolean;
@@ -31,9 +25,7 @@ export const HIGH_RISK_POLICY: HighRiskPolicy = {
   maxAmount: 5, // $5 USDC
   maxDailyLimit: 50, // $50 USDC per day
   requirePasskey: true,
-  requireOTP: true,
   requireDeviceVerification: true,
-  requireEmailConfirmation: true,
   allowedCountries: ['US', 'CA', 'GB', 'AU', 'DE', 'FR', 'JP', 'SG', 'NL', 'SE', 'CH', 'NO', 'DK', 'FI'],
   velocityCheck: true,
   addressRiskCheck: true
@@ -43,7 +35,6 @@ export class HighRiskApprovalService {
   private dailyTransactions: Map<string, number> = new Map();
   private lastResetDate: string = new Date().toDateString();
   private recentTransactions: Map<string, Array<{ amount: number; timestamp: number }>> = new Map();
-  private pendingOTPs: Map<string, { code: string; expiresAt: number }> = new Map();
 
   async checkHighRiskApproval(
     amount: number,
@@ -52,9 +43,7 @@ export class HighRiskApprovalService {
     userCountry?: string,
     deviceFingerprint?: string,
     ipAddress?: string,
-    passkeyVerified: boolean = false,
-    otpVerified: boolean = false,
-    otpCode?: string
+    passkeyVerified: boolean = false
   ): Promise<HighRiskApproval> {
     // Reset daily limits if it's a new day
     this.resetDailyLimitsIfNeeded();
@@ -99,33 +88,6 @@ export class HighRiskApprovalService {
       throw new Error('Passkey verification required for high risk transactions');
     }
 
-    // Require OTP verification
-    if (HIGH_RISK_POLICY.requireOTP && !otpVerified) {
-      if (otpCode) {
-        const isValidOTP = await this.verifyOTP(fromAddress, otpCode);
-        if (!isValidOTP) {
-          throw new Error('Invalid OTP code. Please check your email and try again.');
-        }
-      } else {
-        // Generate and send OTP
-        const otpCode = await this.generateAndSendOTP(fromAddress);
-        return {
-          amount,
-          toAddress,
-          fromAddress,
-          timestamp: Date.now(),
-          requiresPasskey: HIGH_RISK_POLICY.requirePasskey,
-          requiresOTP: HIGH_RISK_POLICY.requireOTP,
-          passkeyVerified,
-          otpVerified: false,
-          deviceFingerprint,
-          ipAddress,
-          emailSent: true,
-          otpCode
-        };
-      }
-    }
-
     // Update tracking
     this.dailyTransactions.set(fromAddress, dailyTotal + amount);
     
@@ -139,9 +101,7 @@ export class HighRiskApprovalService {
       fromAddress,
       timestamp: Date.now(),
       requiresPasskey: HIGH_RISK_POLICY.requirePasskey,
-      requiresOTP: HIGH_RISK_POLICY.requireOTP,
       passkeyVerified,
-      otpVerified: true,
       deviceFingerprint,
       ipAddress
     };
@@ -150,38 +110,6 @@ export class HighRiskApprovalService {
   private async checkAddressRisk(address: string): Promise<boolean> {
     // This would integrate with Circle's Compliance Engine or external risk scoring
     // For now, return false as a placeholder
-    return false;
-  }
-
-  private async generateAndSendOTP(fromAddress: string): Promise<string> {
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = Date.now() + (10 * 60 * 1000); // 10 minutes
-
-    this.pendingOTPs.set(fromAddress, { code: otpCode, expiresAt });
-
-    // This would integrate with your email service
-    // await sendEmail(fromAddress, `Your OTP code is: ${otpCode}`);
-
-    return otpCode;
-  }
-
-  private async verifyOTP(fromAddress: string, otpCode: string): Promise<boolean> {
-    const pendingOTP = this.pendingOTPs.get(fromAddress);
-    
-    if (!pendingOTP) {
-      return false;
-    }
-
-    if (Date.now() > pendingOTP.expiresAt) {
-      this.pendingOTPs.delete(fromAddress);
-      return false;
-    }
-
-    if (pendingOTP.code === otpCode) {
-      this.pendingOTPs.delete(fromAddress);
-      return true;
-    }
-
     return false;
   }
 

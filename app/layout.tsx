@@ -3,6 +3,7 @@ import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 import { Toaster } from 'sonner'
+import { AuthProvider } from '@/hooks/useAuth'
 
 export const metadata: Metadata = {
   title: 'v0 App',
@@ -27,7 +28,9 @@ html {
         `}</style>
       </head>
       <body>
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
         <Toaster position="top-right" richColors />
       </body>
     </html>

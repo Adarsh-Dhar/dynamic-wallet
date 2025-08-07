@@ -24,7 +24,7 @@ export interface ApprovalRequest {
     longitude: number;
   };
   passkeyVerified?: boolean;
-  biometricVerified?: boolean;
+  passwordVerified?: boolean;
   otpCode?: string;
   manualApproved?: boolean;
 }
@@ -36,6 +36,7 @@ export interface ApprovalResponse {
   actionRequired?: string;
   autoApproved: boolean;
   requiresPasskey: boolean;
+  requiresPassword: boolean;
   requiresOTP: boolean;
   requiresBiometric: boolean;
   requiresManualApproval: boolean;
@@ -43,7 +44,6 @@ export interface ApprovalResponse {
   blocked: boolean;
   blockReason?: string;
   riskScore?: number;
-  recommendations?: string[];
   nextSteps?: string[];
 }
 
@@ -78,6 +78,7 @@ export class DynamicApprovalManager {
             requiresAction: false,
             autoApproved: true,
             requiresPasskey: false,
+            requiresPassword: false,
             requiresOTP: false,
             requiresBiometric: false,
             requiresManualApproval: false,
@@ -87,91 +88,88 @@ export class DynamicApprovalManager {
 
         case 'medium':
           const mediumResult = await mediumRiskApprovalService.checkMediumRiskApproval(
-            amount, toAddress, fromAddress, userCountry, deviceFingerprint, ipAddress, request.passkeyVerified
+            amount, toAddress, fromAddress, userCountry, deviceFingerprint, ipAddress,
+            request.passwordVerified
           );
           return {
-            approved: mediumResult.passkeyVerified,
+            approved: mediumResult.passwordVerified,
             riskLevel: 'medium',
-            requiresAction: !mediumResult.passkeyVerified,
-            actionRequired: !mediumResult.passkeyVerified ? 'Passkey verification required' : undefined,
+            requiresAction: !mediumResult.passwordVerified,
+            actionRequired: !mediumResult.passwordVerified ? 'Password verification required' : undefined,
             autoApproved: false,
-            requiresPasskey: true,
+            requiresPasskey: false,
+            requiresPassword: true,
             requiresOTP: false,
             requiresBiometric: false,
             requiresManualApproval: false,
             requiresComplianceReview: false,
             blocked: false,
-            nextSteps: !mediumResult.passkeyVerified ? ['Complete passkey verification'] : undefined
+            nextSteps: !mediumResult.passwordVerified ? ['Enter your password'] : undefined
           };
 
         case 'high':
           const highResult = await highRiskApprovalService.checkHighRiskApproval(
             amount, toAddress, fromAddress, userCountry, deviceFingerprint, ipAddress, 
-            request.passkeyVerified, request.otpCode ? true : false, request.otpCode
+            request.passkeyVerified
           );
           return {
-            approved: highResult.passkeyVerified && highResult.otpVerified,
+            approved: highResult.passkeyVerified,
             riskLevel: 'high',
-            requiresAction: !highResult.passkeyVerified || !highResult.otpVerified,
-            actionRequired: !highResult.passkeyVerified ? 'Passkey verification required' : 
-                           !highResult.otpVerified ? 'OTP verification required' : undefined,
+            requiresAction: !highResult.passkeyVerified,
+            actionRequired: !highResult.passkeyVerified ? 'Passkey verification required' : undefined,
             autoApproved: false,
             requiresPasskey: true,
-            requiresOTP: true,
+            requiresPassword: false,
+            requiresOTP: false,
             requiresBiometric: false,
             requiresManualApproval: false,
             requiresComplianceReview: false,
             blocked: false,
-            nextSteps: !highResult.passkeyVerified ? ['Complete passkey verification'] :
-                      !highResult.otpVerified ? ['Check email for OTP code', 'Enter OTP code'] : undefined
+            nextSteps: !highResult.passkeyVerified ? ['Complete passkey verification'] : undefined
           };
 
         case 'very-high':
           const veryHighResult = await veryHighRiskApprovalService.checkVeryHighRiskApproval(
             amount, toAddress, fromAddress, userCountry, deviceFingerprint, ipAddress,
-            request.passkeyVerified, request.biometricVerified, request.manualApproved, userLocation
+            request.passkeyVerified, request.otpCode ? true : false, request.otpCode
           );
           return {
-            approved: veryHighResult.passkeyVerified && veryHighResult.biometricVerified && veryHighResult.manualApproved,
+            approved: veryHighResult.passkeyVerified && veryHighResult.otpVerified,
             riskLevel: 'very-high',
-            requiresAction: !veryHighResult.passkeyVerified || !veryHighResult.biometricVerified || !veryHighResult.manualApproved,
-            actionRequired: !veryHighResult.passkeyVerified ? 'Passkey verification required' :
-                           !veryHighResult.biometricVerified ? 'Biometric verification required' :
-                           !veryHighResult.manualApproved ? 'Manual approval required' : undefined,
+            requiresAction: !veryHighResult.passkeyVerified || !veryHighResult.otpVerified,
+            actionRequired: !veryHighResult.passkeyVerified ? 'Passkey verification required' : 
+                           !veryHighResult.otpVerified ? 'OTP verification required' : undefined,
             autoApproved: false,
             requiresPasskey: true,
-            requiresOTP: false,
-            requiresBiometric: true,
-            requiresManualApproval: true,
+            requiresPassword: false,
+            requiresOTP: true,
+            requiresBiometric: false,
+            requiresManualApproval: false,
             requiresComplianceReview: false,
             blocked: false,
-            riskScore: veryHighResult.riskScore,
             nextSteps: !veryHighResult.passkeyVerified ? ['Complete passkey verification'] :
-                      !veryHighResult.biometricVerified ? ['Complete biometric verification'] :
-                      !veryHighResult.manualApproved ? ['Wait for manual approval'] : undefined
+                      !veryHighResult.otpVerified ? ['Check email for OTP code', 'Enter OTP code'] : undefined
           };
 
         case 'extreme':
           const extremeResult = await extremeRiskApprovalService.checkExtremeRiskApproval(
-            amount, toAddress, fromAddress, userCountry, deviceFingerprint, ipAddress, userLocation
+            amount, toAddress, fromAddress, userCountry, deviceFingerprint, ipAddress
           );
           return {
-            approved: !extremeResult.blocked && extremeResult.complianceReviewPassed,
+            approved: false,
             riskLevel: 'extreme',
-            requiresAction: extremeResult.requiresComplianceReview || extremeResult.blocked,
-            actionRequired: extremeResult.blocked ? extremeResult.blockReason :
-                           extremeResult.requiresComplianceReview ? 'Compliance review required' : undefined,
+            requiresAction: true,
+            actionRequired: extremeResult.blockReason,
             autoApproved: false,
             requiresPasskey: false,
+            requiresPassword: false,
             requiresOTP: false,
             requiresBiometric: false,
             requiresManualApproval: false,
-            requiresComplianceReview: extremeResult.requiresComplianceReview,
-            blocked: extremeResult.blocked,
+            requiresComplianceReview: false,
+            blocked: true,
             blockReason: extremeResult.blockReason,
-            riskScore: extremeResult.riskScore,
-            nextSteps: extremeResult.blocked ? ['Transaction blocked'] :
-                      extremeResult.requiresComplianceReview ? ['Wait for compliance review'] : undefined
+            nextSteps: ['Transaction blocked for security reasons']
           };
 
         default:
@@ -185,6 +183,7 @@ export class DynamicApprovalManager {
         actionRequired: error instanceof Error ? error.message : 'Approval failed',
         autoApproved: false,
         requiresPasskey: false,
+        requiresPassword: false,
         requiresOTP: false,
         requiresBiometric: false,
         requiresManualApproval: false,
@@ -210,35 +209,35 @@ export class DynamicApprovalManager {
           name: 'Low Risk',
           description: 'Auto-approved transactions',
           maxAmount: LOW_RISK_POLICY.maxAmount,
-          requirements: ['Amount under $100', 'Low-risk country', 'Daily limit check']
+          requirements: ['Amount under $1', 'Low-risk country', 'Daily limit check']
         };
       case 'medium':
         return {
           name: 'Medium Risk',
-          description: 'Requires passkey verification',
+          description: 'Requires password verification',
           maxAmount: MEDIUM_RISK_POLICY.maxAmount,
-          requirements: ['Passkey verification', 'Device verification', 'Velocity check']
+          requirements: ['Password verification', 'Device verification', 'Velocity check']
         };
       case 'high':
         return {
           name: 'High Risk',
-          description: 'Requires passkey + OTP verification',
+          description: 'Requires passkey verification',
           maxAmount: HIGH_RISK_POLICY.maxAmount,
-          requirements: ['Passkey verification', 'OTP verification', 'Address risk check']
+          requirements: ['Passkey verification', 'Device verification', 'Address risk check']
         };
       case 'very-high':
         return {
           name: 'Very High Risk',
-          description: 'Requires biometric + manual approval',
+          description: 'Requires passkey + OTP verification',
           maxAmount: VERY_HIGH_RISK_POLICY.maxAmount,
-          requirements: ['Passkey verification', 'Biometric verification', 'Manual approval', 'Geo check']
+          requirements: ['Passkey verification', 'OTP verification', 'Address risk check', 'Time restrictions']
         };
       case 'extreme':
         return {
           name: 'Extreme Risk',
-          description: 'Requires compliance review',
+          description: 'Transaction blocked for security',
           maxAmount: EXTREME_RISK_POLICY.maxAmount,
-          requirements: ['Compliance review', 'Sanctions check', 'Blacklist check', 'Time restrictions']
+          requirements: ['All transactions blocked', 'Security restrictions', 'Compliance requirements']
         };
     }
   }

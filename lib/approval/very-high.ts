@@ -4,22 +4,13 @@ export interface VeryHighRiskApproval {
   fromAddress: string;
   timestamp: number;
   requiresPasskey: boolean;
-  requiresBiometric: boolean;
-  requiresManualApproval: boolean;
-  requiresGeoCheck: boolean;
+  requiresOTP: boolean;
   passkeyVerified: boolean;
-  biometricVerified: boolean;
-  manualApproved: boolean;
-  geoCheckPassed: boolean;
+  otpVerified: boolean;
   deviceFingerprint?: string;
   ipAddress?: string;
-  userLocation?: {
-    country: string;
-    city: string;
-    latitude: number;
-    longitude: number;
-  };
-  riskScore?: number;
+  emailSent?: boolean;
+  otpCode?: string;
 }
 
 export interface VeryHighRiskPolicy {
@@ -27,9 +18,7 @@ export interface VeryHighRiskPolicy {
   maxAmount: number;
   maxDailyLimit: number;
   requirePasskey: boolean;
-  requireBiometric: boolean;
-  requireManualApproval: boolean;
-  requireGeoCheck: boolean;
+  requireOTP: boolean;
   requireDeviceVerification: boolean;
   allowedCountries: string[];
   velocityCheck: boolean;
@@ -42,9 +31,7 @@ export const VERY_HIGH_RISK_POLICY: VeryHighRiskPolicy = {
   maxAmount: 7, // $7 USDC
   maxDailyLimit: 100, // $100 USDC per day
   requirePasskey: true,
-  requireBiometric: true,
-  requireManualApproval: true,
-  requireGeoCheck: true,
+  requireOTP: true,
   requireDeviceVerification: true,
   allowedCountries: ['US', 'CA', 'GB', 'AU', 'DE', 'FR', 'JP', 'SG', 'NL', 'SE', 'CH', 'NO', 'DK', 'FI', 'AT', 'BE', 'LU'],
   velocityCheck: true,
@@ -56,7 +43,7 @@ export class VeryHighRiskApprovalService {
   private dailyTransactions: Map<string, number> = new Map();
   private lastResetDate: string = new Date().toDateString();
   private recentTransactions: Map<string, Array<{ amount: number; timestamp: number }>> = new Map();
-  private pendingApprovals: Map<string, { amount: number; toAddress: string; timestamp: number }> = new Map();
+  private pendingOTPs: Map<string, { code: string; expiresAt: number }> = new Map();
 
   async checkVeryHighRiskApproval(
     amount: number,
@@ -66,14 +53,8 @@ export class VeryHighRiskApprovalService {
     deviceFingerprint?: string,
     ipAddress?: string,
     passkeyVerified: boolean = false,
-    biometricVerified: boolean = false,
-    manualApproved: boolean = false,
-    userLocation?: {
-      country: string;
-      city: string;
-      latitude: number;
-      longitude: number;
-    }
+    otpVerified: boolean = false,
+    otpCode?: string
   ): Promise<VeryHighRiskApproval> {
     // Reset daily limits if it's a new day
     this.resetDailyLimitsIfNeeded();
@@ -121,52 +102,36 @@ export class VeryHighRiskApprovalService {
       }
     }
 
-    // Geo check
-    let geoCheckPassed = false;
-    if (VERY_HIGH_RISK_POLICY.requireGeoCheck && userLocation) {
-      geoCheckPassed = await this.performGeoCheck(userLocation, ipAddress);
-      if (!geoCheckPassed) {
-        throw new Error('Geographic location verification failed. Transaction blocked.');
-      }
-    }
-
     // Require passkey verification
     if (VERY_HIGH_RISK_POLICY.requirePasskey && !passkeyVerified) {
       throw new Error('Passkey verification required for very high risk transactions');
     }
 
-    // Require biometric verification
-    if (VERY_HIGH_RISK_POLICY.requireBiometric && !biometricVerified) {
-      throw new Error('Biometric verification required for very high risk transactions');
-    }
-
-    // Require manual approval
-    if (VERY_HIGH_RISK_POLICY.requireManualApproval && !manualApproved) {
-      // Create pending approval
-      this.pendingApprovals.set(fromAddress, {
-        amount,
-        toAddress,
-        timestamp: Date.now()
-      });
-
-      return {
-        amount,
-        toAddress,
-        fromAddress,
-        timestamp: Date.now(),
-        requiresPasskey: VERY_HIGH_RISK_POLICY.requirePasskey,
-        requiresBiometric: VERY_HIGH_RISK_POLICY.requireBiometric,
-        requiresManualApproval: VERY_HIGH_RISK_POLICY.requireManualApproval,
-        requiresGeoCheck: VERY_HIGH_RISK_POLICY.requireGeoCheck,
-        passkeyVerified,
-        biometricVerified,
-        manualApproved: false,
-        geoCheckPassed,
-        deviceFingerprint,
-        ipAddress,
-        userLocation,
-        riskScore: await this.calculateRiskScore(amount, toAddress, userLocation)
-      };
+    // Require OTP verification
+    if (VERY_HIGH_RISK_POLICY.requireOTP && !otpVerified) {
+      if (otpCode) {
+        const isValidOTP = await this.verifyOTP(fromAddress, otpCode);
+        if (!isValidOTP) {
+          throw new Error('Invalid OTP code. Please check your email and try again.');
+        }
+      } else {
+        // Generate and send OTP
+        const otpCode = await this.generateAndSendOTP(fromAddress);
+        return {
+          amount,
+          toAddress,
+          fromAddress,
+          timestamp: Date.now(),
+          requiresPasskey: VERY_HIGH_RISK_POLICY.requirePasskey,
+          requiresOTP: VERY_HIGH_RISK_POLICY.requireOTP,
+          passkeyVerified,
+          otpVerified: false,
+          deviceFingerprint,
+          ipAddress,
+          emailSent: true,
+          otpCode
+        };
+      }
     }
 
     // Update tracking
@@ -182,17 +147,11 @@ export class VeryHighRiskApprovalService {
       fromAddress,
       timestamp: Date.now(),
       requiresPasskey: VERY_HIGH_RISK_POLICY.requirePasskey,
-      requiresBiometric: VERY_HIGH_RISK_POLICY.requireBiometric,
-      requiresManualApproval: VERY_HIGH_RISK_POLICY.requireManualApproval,
-      requiresGeoCheck: VERY_HIGH_RISK_POLICY.requireGeoCheck,
+      requiresOTP: VERY_HIGH_RISK_POLICY.requireOTP,
       passkeyVerified,
-      biometricVerified,
-      manualApproved: true,
-      geoCheckPassed,
+      otpVerified: true,
       deviceFingerprint,
-      ipAddress,
-      userLocation,
-      riskScore: await this.calculateRiskScore(amount, toAddress, userLocation)
+      ipAddress
     };
   }
 
@@ -202,51 +161,36 @@ export class VeryHighRiskApprovalService {
     return false;
   }
 
-  private async performGeoCheck(
-    userLocation: {
-      country: string;
-      city: string;
-      latitude: number;
-      longitude: number;
-    },
-    ipAddress?: string
-  ): Promise<boolean> {
-    // This would integrate with IP geolocation services
-    // For now, return true as a placeholder
-    return true;
+  private async generateAndSendOTP(fromAddress: string): Promise<string> {
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + (10 * 60 * 1000); // 10 minutes
+
+    this.pendingOTPs.set(fromAddress, { code: otpCode, expiresAt });
+
+    // This would integrate with your email service
+    // await sendEmail(fromAddress, `Your OTP code is: ${otpCode}`);
+
+    return otpCode;
   }
 
-  private async calculateRiskScore(
-    amount: number,
-    toAddress: string,
-    userLocation?: {
-      country: string;
-      city: string;
-      latitude: number;
-      longitude: number;
-    }
-  ): Promise<number> {
-    let riskScore = 0;
-
-    // Amount-based risk
-    if (amount > 10000) riskScore += 30;
-    if (amount > 25000) riskScore += 20;
-
-    // Location-based risk
-    if (userLocation) {
-      const highRiskCountries = ['CY', 'MT', 'BG', 'RO'];
-      if (highRiskCountries.includes(userLocation.country)) {
-        riskScore += 25;
-      }
+  private async verifyOTP(fromAddress: string, otpCode: string): Promise<boolean> {
+    const pendingOTP = this.pendingOTPs.get(fromAddress);
+    
+    if (!pendingOTP) {
+      return false;
     }
 
-    // Address-based risk (would integrate with compliance engine)
-    const addressRisk = await this.checkAddressRisk(toAddress);
-    if (addressRisk) {
-      riskScore += 40;
+    if (Date.now() > pendingOTP.expiresAt) {
+      this.pendingOTPs.delete(fromAddress);
+      return false;
     }
 
-    return Math.min(riskScore, 100);
+    if (pendingOTP.code === otpCode) {
+      this.pendingOTPs.delete(fromAddress);
+      return true;
+    }
+
+    return false;
   }
 
   private resetDailyLimitsIfNeeded(): void {
@@ -265,19 +209,6 @@ export class VeryHighRiskApprovalService {
     return this.recentTransactions.get(fromAddress) || [];
   }
 
-  getPendingApproval(fromAddress: string) {
-    return this.pendingApprovals.get(fromAddress);
-  }
-
-  approveTransaction(fromAddress: string): boolean {
-    const pending = this.pendingApprovals.get(fromAddress);
-    if (pending) {
-      this.pendingApprovals.delete(fromAddress);
-      return true;
-    }
-    return false;
-  }
-
   isEligibleForVeryHighRisk(
     amount: number,
     userCountry?: string,
@@ -292,11 +223,6 @@ export class VeryHighRiskApprovalService {
 
   async verifyPasskey(credentialId: string, signature: string): Promise<boolean> {
     // This would integrate with WebAuthn/Passkey verification
-    return true;
-  }
-
-  async verifyBiometric(biometricData: string): Promise<boolean> {
-    // This would integrate with biometric verification
     return true;
   }
 }

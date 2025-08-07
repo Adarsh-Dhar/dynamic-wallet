@@ -3,8 +3,8 @@ export interface MediumRiskApproval {
   toAddress: string;
   fromAddress: string;
   timestamp: number;
-  requiresPasskey: boolean;
-  passkeyVerified: boolean;
+  requiresPassword: boolean;
+  passwordVerified: boolean;
   deviceFingerprint?: string;
   ipAddress?: string;
 }
@@ -13,7 +13,7 @@ export interface MediumRiskPolicy {
   minAmount: number;
   maxAmount: number;
   maxDailyLimit: number;
-  requirePasskey: boolean;
+  requirePassword: boolean;
   requireDeviceVerification: boolean;
   allowedCountries: string[];
   velocityCheck: boolean;
@@ -23,7 +23,7 @@ export const MEDIUM_RISK_POLICY: MediumRiskPolicy = {
   minAmount: 1, // $1 USDC
   maxAmount: 3, // $3 USDC
   maxDailyLimit: 20, // $20 USDC per day
-  requirePasskey: true,
+  requirePassword: true,
   requireDeviceVerification: true,
   allowedCountries: ['US', 'CA', 'GB', 'AU', 'DE', 'FR', 'JP', 'SG', 'NL', 'SE', 'CH'],
   velocityCheck: true
@@ -41,7 +41,7 @@ export class MediumRiskApprovalService {
     userCountry?: string,
     deviceFingerprint?: string,
     ipAddress?: string,
-    passkeyVerified: boolean = false
+    passwordVerified: boolean = false
   ): Promise<MediumRiskApproval> {
     // Reset daily limits if it's a new day
     this.resetDailyLimitsIfNeeded();
@@ -73,9 +73,9 @@ export class MediumRiskApprovalService {
       }
     }
 
-    // Require passkey verification
-    if (MEDIUM_RISK_POLICY.requirePasskey && !passkeyVerified) {
-      throw new Error('Passkey verification required for medium risk transactions');
+    // Require password verification
+    if (MEDIUM_RISK_POLICY.requirePassword && !passwordVerified) {
+      throw new Error('Password verification required for medium risk transactions');
     }
 
     // Update tracking
@@ -90,8 +90,8 @@ export class MediumRiskApprovalService {
       toAddress,
       fromAddress,
       timestamp: Date.now(),
-      requiresPasskey: MEDIUM_RISK_POLICY.requirePasskey,
-      passkeyVerified,
+      requiresPassword: MEDIUM_RISK_POLICY.requirePassword,
+      passwordVerified,
       deviceFingerprint,
       ipAddress
     };
@@ -125,8 +125,8 @@ export class MediumRiskApprovalService {
     );
   }
 
-  async verifyPasskey(credentialId: string, signature: string): Promise<boolean> {
-    // This would integrate with WebAuthn/Passkey verification
+  async verifyPassword(password: string): Promise<boolean> {
+    // This would integrate with the user's saved password
     // For now, return true as a placeholder
     return true;
   }

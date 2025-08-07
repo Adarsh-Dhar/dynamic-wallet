@@ -1,4 +1,6 @@
-import { useState, useEffect, createContext, useContext } from 'react';
+'use client'
+
+import React, { useState, useEffect, createContext, useContext } from 'react';
 
 interface User {
   id: string;
@@ -17,6 +19,7 @@ interface AuthContextType {
   register: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
+  verifyPassword: (password: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -136,6 +139,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const verifyPassword = async (password: string) => {
+    try {
+      const response = await fetch('/api/auth/verify-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        return { success: true };
+      } else {
+        return { success: false, error: data.error || 'Password verification failed' };
+      }
+    } catch (error) {
+      console.error('Password verification error:', error);
+      return { success: false, error: 'Network error' };
+    }
+  };
+
   const value: AuthContextType = {
     user,
     loading,
@@ -143,13 +170,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     register,
     logout,
     refreshToken,
+    verifyPassword,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return React.createElement(AuthContext.Provider, { value }, children);
 }
 
 export function useAuth() {
