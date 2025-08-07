@@ -12,6 +12,13 @@ interface User {
   }>;
 }
 
+interface TransactionContext {
+  amount: number;
+  toAddress: string;
+  fromAddress: string;
+  riskLevel?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   loading: boolean;
@@ -20,6 +27,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
   verifyPassword: (password: string) => Promise<{ success: boolean; error?: string }>;
+  verifyPasswordForTransaction: (password: string, transactionContext?: TransactionContext) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -163,6 +171,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const verifyPasswordForTransaction = async (password: string, transactionContext?: TransactionContext) => {
+    try {
+      const response = await fetch('/api/usdc/verify-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          password,
+          transactionContext 
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        return { success: true };
+      } else {
+        return { success: false, error: data.error || 'Password verification failed' };
+      }
+    } catch (error) {
+      console.error('Transaction password verification error:', error);
+      return { success: false, error: 'Network error' };
+    }
+  };
+
   const value: AuthContextType = {
     user,
     loading,
@@ -171,6 +206,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logout,
     refreshToken,
     verifyPassword,
+    verifyPasswordForTransaction,
   };
 
   return React.createElement(AuthContext.Provider, { value }, children);

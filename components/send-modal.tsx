@@ -11,6 +11,9 @@ import { Badge } from "@/components/ui/badge"
 import { ArrowRight, Scan, Loader2, AlertCircle, CheckCircle, Shield, Lock, Eye, EyeOff, Fingerprint, Mail, Clock, AlertTriangle } from 'lucide-react'
 import { sendUSDC, getUSDCBalance, checkNetwork, switchToSepolia, USDCBalance } from "@/lib/usdc"
 import { dynamicApprovalManager, ApprovalRequest, ApprovalResponse } from "@/lib/approval"
+import { mediumRiskApprovalService } from "@/lib/approval/medium"
+import { highRiskApprovalService } from "@/lib/approval/high"
+import { veryHighRiskApprovalService } from "@/lib/approval/very-high"
 import PasswordDialog from "@/components/password-dialog"
 import { toast } from "sonner"
 
@@ -193,6 +196,15 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
   const handlePasswordVerified = () => {
     setPasswordVerified(true)
     setApprovalStep('initial')
+    
+    // Update transaction tracking for medium risk transactions
+    if (approvalResponse?.riskLevel === 'medium' && vaultId) {
+      const numAmount = parseFloat(amount)
+      if (!isNaN(numAmount) && numAmount > 0) {
+        mediumRiskApprovalService.updateTransactionTracking(vaultId, numAmount)
+      }
+    }
+    
     // Re-check approval with updated state
     checkApproval().then(approval => {
       setApprovalResponse(approval)
@@ -275,6 +287,14 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
       setPasskeyVerified(true)
       toast.success('Passkey verification successful')
       
+      // Update transaction tracking for high risk transactions
+      if (approvalResponse?.riskLevel === 'high' && vaultId) {
+        const numAmount = parseFloat(amount)
+        if (!isNaN(numAmount) && numAmount > 0) {
+          highRiskApprovalService.updateTransactionTracking(vaultId, numAmount)
+        }
+      }
+
       // Re-check approval with updated state
       const approval = await checkApproval()
       setApprovalResponse(approval)
@@ -327,6 +347,13 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
       setApprovalResponse(approval)
       
       if (approval.approved) {
+        // Update transaction tracking for very-high risk transactions
+        if (approvalResponse?.riskLevel === 'very-high' && vaultId) {
+          const numAmount = parseFloat(amount)
+          if (!isNaN(numAmount) && numAmount > 0) {
+            veryHighRiskApprovalService.updateTransactionTracking(vaultId, numAmount)
+          }
+        }
         await executeTransaction()
       } else {
         toast.error('Invalid OTP code')
@@ -699,6 +726,8 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
         onPasswordVerified={handlePasswordVerified}
         amount={parseFloat(amount) || 0}
         toAddress={recipient}
+        fromAddress={vaultId}
+        riskLevel={approvalResponse?.riskLevel || 'medium'}
       />
     </>
   )

@@ -1,3 +1,5 @@
+import { passwordVerificationService, PasswordVerificationRequest } from './strategies/password';
+
 export interface MediumRiskApproval {
   amount: number;
   toAddress: string;
@@ -41,7 +43,8 @@ export class MediumRiskApprovalService {
     userCountry?: string,
     deviceFingerprint?: string,
     ipAddress?: string,
-    passwordVerified: boolean = false
+    passwordVerified: boolean = false,
+    userId?: string
   ): Promise<MediumRiskApproval> {
     // Reset daily limits if it's a new day
     this.resetDailyLimitsIfNeeded();
@@ -73,18 +76,8 @@ export class MediumRiskApprovalService {
       }
     }
 
-    // Require password verification
-    if (MEDIUM_RISK_POLICY.requirePassword && !passwordVerified) {
-      throw new Error('Password verification required for medium risk transactions');
-    }
-
-    // Update tracking
-    this.dailyTransactions.set(fromAddress, dailyTotal + amount);
-    
-    const recent = this.recentTransactions.get(fromAddress) || [];
-    recent.push({ amount, timestamp: Date.now() });
-    this.recentTransactions.set(fromAddress, recent.slice(-10)); // Keep last 10 transactions
-
+    // Return response indicating password verification status
+    // Don't throw error for password verification requirement - let the approval system handle it
     return {
       amount,
       toAddress,
@@ -95,6 +88,45 @@ export class MediumRiskApprovalService {
       deviceFingerprint,
       ipAddress
     };
+  }
+
+  /**
+   * Update transaction tracking after successful password verification
+   */
+  updateTransactionTracking(fromAddress: string, amount: number): void {
+    // Update daily tracking
+    const dailyTotal = this.dailyTransactions.get(fromAddress) || 0;
+    this.dailyTransactions.set(fromAddress, dailyTotal + amount);
+    
+    // Update recent transactions tracking
+    const recent = this.recentTransactions.get(fromAddress) || [];
+    recent.push({ amount, timestamp: Date.now() });
+    this.recentTransactions.set(fromAddress, recent.slice(-10)); // Keep last 10 transactions
+  }
+
+  /**
+   * Verify password for medium risk transactions
+   */
+  async verifyPasswordForTransaction(
+    userId: string,
+    password: string,
+    transactionContext: {
+      amount: number;
+      toAddress: string;
+      fromAddress: string;
+    }
+  ): Promise<boolean> {
+    const request: PasswordVerificationRequest = {
+      userId,
+      password,
+      transactionContext: {
+        ...transactionContext,
+        riskLevel: 'medium'
+      }
+    };
+
+    const response = await passwordVerificationService.verifyPasswordForTransaction(request);
+    return response.success && response.passwordVerified;
   }
 
   private resetDailyLimitsIfNeeded(): void {
@@ -125,10 +157,28 @@ export class MediumRiskApprovalService {
     );
   }
 
-  async verifyPassword(password: string): Promise<boolean> {
-    // This would integrate with the user's saved password
-    // For now, return true as a placeholder
-    return true;
+  /**
+   * Get password requirements for medium risk transactions
+   */
+  getPasswordRequirements(): {
+    required: boolean;
+    reason: string;
+    additionalFactors?: string[];
+  } {
+    return passwordVerificationService.getPasswordRequirements('medium', MEDIUM_RISK_POLICY.maxAmount);
+  }
+
+  /**
+   * Get UI configuration for password verification
+   */
+  getPasswordUIConfig(): {
+    title: string;
+    description: string;
+    placeholder: string;
+    showTransactionDetails: boolean;
+    icon: string;
+  } {
+    return passwordVerificationService.getPasswordUIConfig('medium', MEDIUM_RISK_POLICY.maxAmount);
   }
 }
 

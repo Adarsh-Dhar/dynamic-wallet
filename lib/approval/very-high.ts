@@ -102,12 +102,10 @@ export class VeryHighRiskApprovalService {
       }
     }
 
-    // Require passkey verification
-    if (VERY_HIGH_RISK_POLICY.requirePasskey && !passkeyVerified) {
-      throw new Error('Passkey verification required for very high risk transactions');
-    }
-
-    // Require OTP verification
+    // Return response indicating verification status
+    // Don't throw errors for verification requirements - let the approval system handle it
+    
+    // Handle OTP verification
     if (VERY_HIGH_RISK_POLICY.requireOTP && !otpVerified) {
       if (otpCode) {
         const isValidOTP = await this.verifyOTP(fromAddress, otpCode);
@@ -134,13 +132,6 @@ export class VeryHighRiskApprovalService {
       }
     }
 
-    // Update tracking
-    this.dailyTransactions.set(fromAddress, dailyTotal + amount);
-    
-    const recent = this.recentTransactions.get(fromAddress) || [];
-    recent.push({ amount, timestamp: Date.now() });
-    this.recentTransactions.set(fromAddress, recent.slice(-3)); // Keep last 3 transactions
-
     return {
       amount,
       toAddress,
@@ -149,10 +140,24 @@ export class VeryHighRiskApprovalService {
       requiresPasskey: VERY_HIGH_RISK_POLICY.requirePasskey,
       requiresOTP: VERY_HIGH_RISK_POLICY.requireOTP,
       passkeyVerified,
-      otpVerified: true,
+      otpVerified: otpVerified || (otpCode ? true : false),
       deviceFingerprint,
       ipAddress
     };
+  }
+
+  /**
+   * Update transaction tracking after successful verification
+   */
+  updateTransactionTracking(fromAddress: string, amount: number): void {
+    // Update daily tracking
+    const dailyTotal = this.dailyTransactions.get(fromAddress) || 0;
+    this.dailyTransactions.set(fromAddress, dailyTotal + amount);
+    
+    // Update recent transactions tracking
+    const recent = this.recentTransactions.get(fromAddress) || [];
+    recent.push({ amount, timestamp: Date.now() });
+    this.recentTransactions.set(fromAddress, recent.slice(-3)); // Keep last 3 transactions
   }
 
   private async checkAddressRisk(address: string): Promise<boolean> {

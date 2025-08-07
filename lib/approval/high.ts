@@ -83,18 +83,8 @@ export class HighRiskApprovalService {
       }
     }
 
-    // Require passkey verification
-    if (HIGH_RISK_POLICY.requirePasskey && !passkeyVerified) {
-      throw new Error('Passkey verification required for high risk transactions');
-    }
-
-    // Update tracking
-    this.dailyTransactions.set(fromAddress, dailyTotal + amount);
-    
-    const recent = this.recentTransactions.get(fromAddress) || [];
-    recent.push({ amount, timestamp: Date.now() });
-    this.recentTransactions.set(fromAddress, recent.slice(-5)); // Keep last 5 transactions
-
+    // Return response indicating passkey verification status
+    // Don't throw error for passkey verification requirement - let the approval system handle it
     return {
       amount,
       toAddress,
@@ -105,6 +95,20 @@ export class HighRiskApprovalService {
       deviceFingerprint,
       ipAddress
     };
+  }
+
+  /**
+   * Update transaction tracking after successful passkey verification
+   */
+  updateTransactionTracking(fromAddress: string, amount: number): void {
+    // Update daily tracking
+    const dailyTotal = this.dailyTransactions.get(fromAddress) || 0;
+    this.dailyTransactions.set(fromAddress, dailyTotal + amount);
+    
+    // Update recent transactions tracking
+    const recent = this.recentTransactions.get(fromAddress) || [];
+    recent.push({ amount, timestamp: Date.now() });
+    this.recentTransactions.set(fromAddress, recent.slice(-5)); // Keep last 5 transactions
   }
 
   private async checkAddressRisk(address: string): Promise<boolean> {
