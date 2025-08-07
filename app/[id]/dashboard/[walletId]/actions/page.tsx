@@ -5,9 +5,11 @@ import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Copy, Eye, EyeOff, Send, Download, ArrowLeft, Wallet, Loader2, ExternalLink } from 'lucide-react'
+import { Copy, Eye, EyeOff, Send, Download, ArrowLeft, Wallet, Loader2, ExternalLink, RefreshCw } from 'lucide-react'
 import SendModal from "@/components/send-modal"
 import ReceiveModal from "@/components/receive-modal"
+import { getUSDCBalance, checkNetwork, switchToSepolia, USDCBalance } from "@/lib/usdc"
+import { toast } from "sonner"
 
 interface Vault {
   id: string
@@ -29,6 +31,8 @@ export default function WalletActions() {
   const [loading, setLoading] = useState(true)
   const [balance, setBalance] = useState<string>("")
   const [balanceLoading, setBalanceLoading] = useState(true)
+  const [usdcBalance, setUsdcBalance] = useState<USDCBalance | null>(null)
+  const [usdcBalanceLoading, setUsdcBalanceLoading] = useState(false)
 
   // Fetch wallet data on component mount
   useEffect(() => {
@@ -64,6 +68,20 @@ export default function WalletActions() {
     }
   }
 
+  const fetchUSDCBalance = async () => {
+    try {
+      setUsdcBalanceLoading(true)
+      
+      const balance = await getUSDCBalance(walletId)
+      setUsdcBalance(balance)
+    } catch (error: any) {
+      console.error('Failed to fetch USDC balance:', error)
+      toast.error('Failed to fetch USDC balance')
+    } finally {
+      setUsdcBalanceLoading(false)
+    }
+  }
+
   const handleBack = () => {
     router.push(`/dashboard/${params.id}`)
   }
@@ -71,14 +89,19 @@ export default function WalletActions() {
   const copyAddress = () => {
     if (selectedWallet?.address) {
       navigator.clipboard.writeText(selectedWallet.address)
+      toast.success('Address copied to clipboard')
     }
   }
 
   const viewOnExplorer = () => {
     if (selectedWallet?.address) {
       // Open in a new tab - you can customize the explorer URL based on your blockchain
-      window.open(`https://etherscan.io/address/${selectedWallet.address}`, '_blank')
+      window.open(`https://sepolia.etherscan.io/address/${selectedWallet.address}`, '_blank')
     }
+  }
+
+  const handleRefreshBalance = () => {
+    fetchUSDCBalance()
   }
 
   if (loading) {
@@ -136,14 +159,25 @@ export default function WalletActions() {
                 <Wallet className="w-5 h-5 text-blue-400" />
                 <CardTitle className="text-white">Wallet Balance</CardTitle>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowBalance(!showBalance)}
-                className="text-slate-400 hover:text-white p-1"
-              >
-                {showBalance ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-              </Button>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRefreshBalance}
+                  disabled={usdcBalanceLoading}
+                  className="text-slate-400 hover:text-white p-1"
+                >
+                  <RefreshCw className={`w-4 h-4 ${usdcBalanceLoading ? 'animate-spin' : ''}`} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowBalance(!showBalance)}
+                  className="text-slate-400 hover:text-white p-1"
+                >
+                  {showBalance ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                </Button>
+              </div>
             </div>
             <CardDescription className="text-slate-400">
               {selectedWallet.address ? (
@@ -164,22 +198,56 @@ export default function WalletActions() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-bold text-white mb-2">
-              {showBalance ? (
-                balanceLoading ? (
-                  <div className="flex items-center space-x-2">
-                    <Loader2 className="w-6 h-6 animate-spin" />
-                    <span>Loading...</span>
-                  </div>
-                ) : (
-                  <span className="text-slate-400">Balance not available</span>
-                )
-              ) : (
-                "••••••"
-              )}
+            <div className="space-y-4">
+              {/* USDC Balance */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <span className="text-2xl">💵</span>
+                  <span className="text-white font-medium">USDC</span>
+                </div>
+                <div className="text-right">
+                  {showBalance ? (
+                    usdcBalanceLoading ? (
+                      <div className="flex items-center space-x-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span className="text-slate-400">Loading...</span>
+                      </div>
+                    ) : (
+                      <div className="text-2xl font-bold text-white">
+                        {usdcBalance ? `${parseFloat(usdcBalance.balance).toFixed(2)} USDC` : '0.00 USDC'}
+                      </div>
+                    )
+                  ) : (
+                    <div className="text-2xl font-bold text-white">••••••</div>
+                  )}
+                </div>
+              </div>
+
+              {/* ETH Balance (placeholder) */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <span className="text-2xl">⟠</span>
+                  <span className="text-white font-medium">ETH</span>
+                </div>
+                <div className="text-right">
+                  {showBalance ? (
+                    balanceLoading ? (
+                      <div className="flex items-center space-x-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span className="text-slate-400">Loading...</span>
+                      </div>
+                    ) : (
+                      <span className="text-slate-400">Balance not available</span>
+                    )
+                  ) : (
+                    <div className="text-2xl font-bold text-white">••••••</div>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="text-slate-400 text-sm">
-              Connect to blockchain to view real-time balance
+            
+            <div className="text-slate-400 text-sm mt-4">
+              Connect to Sepolia network to view real-time balances
             </div>
           </CardContent>
         </Card>
@@ -194,8 +262,8 @@ export default function WalletActions() {
                   <Send className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-white">Send</h3>
-                  <p className="text-slate-400 text-sm">Send cryptocurrency to another wallet</p>
+                  <h3 className="text-lg font-semibold text-white">Send USDC</h3>
+                  <p className="text-slate-400 text-sm">Send USDC to another wallet</p>
                 </div>
               </div>
             </CardContent>
@@ -233,7 +301,7 @@ export default function WalletActions() {
                 onClick={() => setShowSendModal(true)}
               >
                 <Send className="w-4 h-4 mr-2" />
-                Send
+                Send USDC
               </Button>
               <Button 
                 variant="outline" 
@@ -267,7 +335,7 @@ export default function WalletActions() {
       </div>
 
       {/* Modals */}
-      <SendModal open={showSendModal} onOpenChange={setShowSendModal} />
+      <SendModal open={showSendModal} onOpenChange={setShowSendModal} vaultId={walletId} />
       <ReceiveModal open={showReceiveModal} onOpenChange={setShowReceiveModal} />
     </div>
   )
