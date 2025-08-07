@@ -21,6 +21,7 @@ model User {
   vaults          Vault[]    // One or more encrypted vaults
   refreshTokens   RefreshToken[]
   passkeys        Passkey[]  // WebAuthn passkeys
+  otpCodes        OtpCode[]  // OTP codes for email verification
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 }
@@ -61,4 +62,26 @@ model Passkey {
   
   @@index([userId])
   @@index([credentialID])
+}
+
+model OtpCode {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code        String   // The OTP code
+  type        OtpType  // Type of OTP (email verification, password reset, etc.)
+  expiresAt   DateTime // When the OTP expires
+  isUsed      Boolean  @default(false) // Whether the OTP has been used
+  createdAt   DateTime @default(now())
+  
+  @@index([userId])
+  @@index([code])
+  @@index([expiresAt])
+}
+
+enum OtpType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+  LOGIN_VERIFICATION
+  TRANSACTION_APPROVAL
 }
