@@ -5,10 +5,11 @@ import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Copy, Eye, EyeOff, Send, Download, ArrowLeft, Wallet, Loader2, ExternalLink, RefreshCw } from 'lucide-react'
+import { Copy, Eye, EyeOff, Send, Download, ArrowLeft, Wallet, Loader2, ExternalLink, RefreshCw, Shield, Lock, AlertTriangle } from 'lucide-react'
 import SendModal from "@/components/send-modal"
 import ReceiveModal from "@/components/receive-modal"
 import { getUSDCBalance, checkNetwork, switchToSepolia, USDCBalance } from "@/lib/usdc"
+import { dynamicApprovalManager } from "@/lib/approval"
 import { toast } from "sonner"
 
 interface Vault {
@@ -102,6 +103,33 @@ export default function WalletActions() {
 
   const handleRefreshBalance = () => {
     fetchUSDCBalance()
+  }
+
+  const getRiskLevelColor = (riskLevel: string) => {
+    switch (riskLevel) {
+      case 'low': return 'bg-green-500/20 text-green-400 border-green-500/50'
+      case 'medium': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50'
+      case 'high': return 'bg-orange-500/20 text-orange-400 border-orange-500/50'
+      case 'very-high': return 'bg-red-500/20 text-red-400 border-red-500/50'
+      case 'extreme': return 'bg-purple-500/20 text-purple-400 border-purple-500/50'
+      default: return 'bg-slate-500/20 text-slate-400 border-slate-500/50'
+    }
+  }
+
+  const getRiskLevelIcon = (riskLevel: string) => {
+    switch (riskLevel) {
+      case 'low': return <Shield className="w-4 h-4" />
+      case 'medium': return <Lock className="w-4 h-4" />
+      case 'high': return <AlertTriangle className="w-4 h-4" />
+      case 'very-high': return <AlertTriangle className="w-4 h-4" />
+      case 'extreme': return <AlertTriangle className="w-4 h-4" />
+      default: return <Shield className="w-4 h-4" />
+    }
+  }
+
+  const getRiskLevelInfo = (amount: number) => {
+    const riskLevel = dynamicApprovalManager.getRiskLevel(amount)
+    return dynamicApprovalManager.getRiskLevelInfo(riskLevel)
   }
 
   if (loading) {
@@ -252,6 +280,41 @@ export default function WalletActions() {
           </CardContent>
         </Card>
 
+        {/* Security Levels Info */}
+        <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="text-white flex items-center space-x-2">
+              <Shield className="w-5 h-5 text-blue-400" />
+              Dynamic Security Levels
+            </CardTitle>
+            <CardDescription className="text-slate-400">
+              Transaction security is automatically adjusted based on amount and risk factors
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+              {[1, 3, 5, 7, 9].map((amount) => {
+                const riskLevel = dynamicApprovalManager.getRiskLevel(amount)
+                const riskInfo = getRiskLevelInfo(amount)
+                return (
+                  <div key={amount} className="p-3 rounded-lg bg-slate-700/50 border border-slate-600">
+                    <div className="flex items-center justify-between mb-2">
+                      <Badge className={getRiskLevelColor(riskLevel)}>
+                        {getRiskLevelIcon(riskLevel)}
+                        {riskInfo.name}
+                      </Badge>
+                    </div>
+                    <div className="text-xs text-slate-400">
+                      <p className="font-medium text-white">${amount}+</p>
+                      <p className="mt-1">{riskInfo.description}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Action Buttons */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Send Button */}
@@ -263,7 +326,7 @@ export default function WalletActions() {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-white">Send USDC</h3>
-                  <p className="text-slate-400 text-sm">Send USDC to another wallet</p>
+                  <p className="text-slate-400 text-sm">Send USDC with dynamic security controls</p>
                 </div>
               </div>
             </CardContent>
