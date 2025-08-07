@@ -15,6 +15,7 @@ import { mediumRiskApprovalService } from "@/lib/approval/medium"
 import { highRiskApprovalService } from "@/lib/approval/high"
 import { veryHighRiskApprovalService } from "@/lib/approval/very-high"
 import PasswordDialog from "@/components/password-dialog"
+import PasskeyVerification from "@/components/PasskeyVerification"
 import { toast } from "sonner"
 
 interface SendModalProps {
@@ -45,6 +46,7 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
 
   // Password dialog state
   const [showPasswordDialog, setShowPasswordDialog] = useState(false)
+  const [showPasskeyDialog, setShowPasskeyDialog] = useState(false)
 
   const assets = [
     { symbol: "USDC", name: "USD Coin", balance: usdcBalance?.balance || "0", icon: "💵" },
@@ -278,6 +280,7 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
     setBiometricVerified(false)
     setManualApproved(false)
     setShowPasswordDialog(false)
+    setShowPasskeyDialog(false)
   }
 
   const handlePasskeyVerification = async () => {
@@ -314,6 +317,44 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
       }
     } catch (error: any) {
       toast.error('Passkey verification failed')
+    }
+  }
+
+  const handlePasskeyVerificationComplete = (success: boolean) => {
+    if (success) {
+      setPasskeyVerified(true)
+      toast.success('Passkey verification successful')
+      
+      // Update transaction tracking for high risk transactions
+      if (approvalResponse?.riskLevel === 'high' && vaultId) {
+        const numAmount = parseFloat(amount)
+        if (!isNaN(numAmount) && numAmount > 0) {
+          highRiskApprovalService.updateTransactionTracking(vaultId, numAmount)
+        }
+      }
+
+      // Re-check approval with updated state
+      checkApproval().then(approval => {
+        setApprovalResponse(approval)
+        if (approval.approved) {
+          executeTransaction()
+        } else if (approval.requiresOTP) {
+          setApprovalStep('otp')
+          setShowOtpInput(true)
+          toast.info('OTP code sent to your email')
+        } else if (approval.requiresBiometric) {
+          setApprovalStep('biometric')
+        } else if (approval.requiresManualApproval) {
+          setApprovalStep('manual')
+        } else if (approval.requiresComplianceReview) {
+          setApprovalStep('compliance')
+        }
+      }).catch(error => {
+        console.error('Failed to re-check approval:', error)
+        toast.error('Failed to process approval')
+      })
+    } else {
+      toast.error('Passkey verification cancelled')
     }
   }
 
@@ -416,7 +457,7 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
                 <p className="text-slate-400">Amount: ${amount} USDC</p>
               </div>
               <Button 
-                onClick={handlePasskeyVerification}
+                onClick={() => setShowPasskeyDialog(true)}
                 className="w-full bg-blue-600 hover:bg-blue-700"
                 disabled={loading}
               >
@@ -728,6 +769,17 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
         toAddress={recipient}
         fromAddress={vaultId}
         riskLevel={approvalResponse?.riskLevel || 'medium'}
+      />
+
+      {/* Passkey Verification Dialog */}
+      <PasskeyVerification
+        open={showPasskeyDialog}
+        onOpenChange={setShowPasskeyDialog}
+        onVerificationComplete={handlePasskeyVerificationComplete}
+        amount={parseFloat(amount) || 0}
+        toAddress={recipient}
+        fromAddress={vaultId || ''}
+        riskLevel={approvalResponse?.riskLevel || 'high'}
       />
     </>
   )

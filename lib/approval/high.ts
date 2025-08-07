@@ -43,7 +43,8 @@ export class HighRiskApprovalService {
     userCountry?: string,
     deviceFingerprint?: string,
     ipAddress?: string,
-    passkeyVerified: boolean = false
+    passkeyVerified: boolean = false,
+    userId?: string
   ): Promise<HighRiskApproval> {
     // Reset daily limits if it's a new day
     this.resetDailyLimitsIfNeeded();
@@ -83,15 +84,31 @@ export class HighRiskApprovalService {
       }
     }
 
+    // Check passkey requirement
+    const requiresPasskey = HIGH_RISK_POLICY.requirePasskey;
+    
+    // If passkey is required but not verified, return response indicating passkey verification needed
+    if (requiresPasskey && !passkeyVerified) {
+      return {
+        amount,
+        toAddress,
+        fromAddress,
+        timestamp: Date.now(),
+        requiresPasskey: true,
+        passkeyVerified: false,
+        deviceFingerprint,
+        ipAddress
+      };
+    }
+
     // Return response indicating passkey verification status
-    // Don't throw error for passkey verification requirement - let the approval system handle it
     return {
       amount,
       toAddress,
       fromAddress,
       timestamp: Date.now(),
-      requiresPasskey: HIGH_RISK_POLICY.requirePasskey,
-      passkeyVerified,
+      requiresPasskey: requiresPasskey,
+      passkeyVerified: passkeyVerified,
       deviceFingerprint,
       ipAddress
     };

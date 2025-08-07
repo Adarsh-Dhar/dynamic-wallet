@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Wallet, Settings, Activity, Shield, Loader2, LogOut, User, CreditCard, TrendingUp, AlertTriangle } from 'lucide-react'
+import { Plus, Wallet, Settings, Activity, Shield, Loader2, LogOut, User, CreditCard, TrendingUp, AlertTriangle, Key } from 'lucide-react'
 import CreateAccountDialog from "@/components/create-account-dialog"
 import { useAuth } from "@/hooks/useAuth"
 
@@ -17,6 +17,15 @@ interface Vault {
   updatedAt: string;
 }
 
+interface Passkey {
+  id: string;
+  name?: string;
+  credentialID: string;
+  lastUsedAt: string;
+  createdAt: string;
+  transports: string[];
+}
+
 export default function Dashboard() {
   const router = useRouter()
   const params = useParams()
@@ -24,12 +33,14 @@ export default function Dashboard() {
   const userId = params.id as string
   
   const [vaults, setVaults] = useState<Vault[]>([])
+  const [passkeys, setPasskeys] = useState<Passkey[]>([])
   const [showCreateAccountDialog, setShowCreateAccountDialog] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  // Fetch vaults on component mount
+  // Fetch vaults and passkeys on component mount
   useEffect(() => {
     fetchVaults()
+    fetchPasskeys()
   }, [])
 
   const fetchVaults = async () => {
@@ -61,6 +72,21 @@ export default function Dashboard() {
     }
   }
 
+  const fetchPasskeys = async () => {
+    try {
+      const response = await fetch('/api/auth/passkey/list')
+      const data = await response.json()
+      
+      if (data.success) {
+        setPasskeys(data.passkeys)
+      } else {
+        console.error('Failed to fetch passkeys:', data.error)
+      }
+    } catch (error) {
+      console.error('Error fetching passkeys:', error)
+    }
+  }
+
   const handleAccountCreated = (newVault: Vault) => {
     setVaults([newVault, ...vaults])
     setShowCreateAccountDialog(false)
@@ -73,6 +99,10 @@ export default function Dashboard() {
   const handleLogout = async () => {
     await logout()
     router.push('/')
+  }
+
+  const handleCreatePasskey = () => {
+    router.push(`/${userId}/dashboard/passkeys`)
   }
 
   if (loading) {
@@ -301,11 +331,36 @@ export default function Dashboard() {
                   
                   <div className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg">
                     <div className="flex items-center space-x-2">
+                      <Key className="w-4 h-4 text-blue-400" />
+                      <span className="text-white text-sm">Passkey Security</span>
+                    </div>
+                    {passkeys.length > 0 ? (
+                      <Badge className="bg-green-500/20 text-green-400 border-green-500/50">
+                        {passkeys.length} Configured
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/50">Not Set</Badge>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg">
+                    <div className="flex items-center space-x-2">
                       <AlertTriangle className="w-4 h-4 text-yellow-400" />
                       <span className="text-white text-sm">Backup Status</span>
                     </div>
                     <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/50">Recommended</Badge>
                   </div>
+
+                  {passkeys.length === 0 && (
+                    <Button
+                      variant="outline"
+                      className="w-full border-slate-600 text-white hover:bg-slate-700 h-12"
+                      onClick={handleCreatePasskey}
+                    >
+                      <Key className="w-4 h-4 mr-2" />
+                      Add Passkey
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

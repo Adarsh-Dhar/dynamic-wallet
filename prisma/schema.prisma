@@ -20,6 +20,7 @@ model User {
   passwordHash    String     // Hashed password (bcrypt/argon2)
   vaults          Vault[]    // One or more encrypted vaults
   refreshTokens   RefreshToken[]
+  passkeys        Passkey[]  // WebAuthn passkeys
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 }
@@ -43,4 +44,21 @@ model RefreshToken {
   createdAt   DateTime @default(now())
   
   @@index([userId])
+}
+
+model Passkey {
+  id                    String   @id @default(uuid())
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialID          String   @unique // Base64URL encoded credential ID
+  credentialPublicKey   String   // Base64URL encoded public key
+  counter               Int      @default(0)
+  transports            String[] // Array of transport types (usb, nfc, ble, internal)
+  name                  String?  // Optional name for the passkey
+  lastUsedAt            DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([credentialID])
 }

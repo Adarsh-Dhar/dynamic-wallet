@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { dynamicApprovalManager, ApprovalRequest } from '@/lib/approval'
+import { passkeyVerificationService } from '@/lib/approval/strategies/passkey'
+import { withAuth, AuthenticatedRequest } from '@/lib/middleware'
 
-export async function POST(request: NextRequest) {
+async function handler(request: AuthenticatedRequest) {
   try {
+    const user = request.user!;
     const body = await request.json()
     const { amount, toAddress, fromAddress, userCountry, deviceFingerprint, ipAddress, userLocation, passkeyVerified, passwordVerified, otpCode, manualApproved } = body
 
@@ -14,6 +17,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check if passkey verification is required for this transaction
+    const requiresPasskey = await passkeyVerificationService.checkPasskeyRequirement(user.userId, amount);
+
     const approvalRequest: ApprovalRequest = {
       amount: parseFloat(amount),
       toAddress,
@@ -22,7 +28,7 @@ export async function POST(request: NextRequest) {
       deviceFingerprint,
       ipAddress,
       userLocation,
-      passkeyVerified,
+      passkeyVerified: requiresPasskey ? passkeyVerified : false,
       passwordVerified,
       otpCode,
       manualApproved
@@ -30,7 +36,21 @@ export async function POST(request: NextRequest) {
 
     const approvalResponse = await dynamicApprovalManager.processApproval(approvalRequest)
 
-    return NextResponse.json(approvalResponse)
+    // If passkey is required but not verified, return passkey requirement
+    if (requiresPasskey && !passkeyVerified) {
+      return NextResponse.json({
+        ...approvalResponse,
+        requiresPasskey: true,
+        passkeyVerified: false,
+        message: 'Passkey verification required for this transaction'
+      })
+    }
+
+    return NextResponse.json({
+      ...approvalResponse,
+      requiresPasskey,
+      passkeyVerified
+    })
   } catch (error: any) {
     console.error('Approval API error:', error)
     return NextResponse.json(
@@ -67,4 +87,6 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     )
   }
-} 
+}
+
+export const POST = withAuth(handler) 
