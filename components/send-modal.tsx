@@ -161,7 +161,30 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
       if (approval.requiresOTP && !showOtpInput) {
         setApprovalStep('otp')
         setShowOtpInput(true)
-        toast.info('OTP code sent to your email')
+        
+        // Send OTP to user's email
+        try {
+          const response = await fetch('/api/otp/send', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+          })
+          
+          const data = await response.json()
+          
+          if (response.ok) {
+            toast.success('OTP code sent to your email')
+          } else {
+            toast.error(data.error || 'Failed to send OTP')
+            setApprovalStep('initial')
+          }
+        } catch (error) {
+          console.error('Failed to send OTP:', error)
+          toast.error('Failed to send OTP code')
+          setApprovalStep('initial')
+        }
         return
       }
 
@@ -384,10 +407,24 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
     }
 
     try {
-      const approval = await checkApproval()
-      setApprovalResponse(approval)
+      setLoading(true)
       
-      if (approval.approved) {
+      // Verify OTP using API
+      const response = await fetch('/api/otp/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ code: otpCode }),
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok) {
+        // OTP verified successfully
+        toast.success('OTP verified successfully')
+        
         // Update transaction tracking for very-high risk transactions
         if (approvalResponse?.riskLevel === 'very-high' && vaultId) {
           const numAmount = parseFloat(amount)
@@ -395,12 +432,17 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
             veryHighRiskApprovalService.updateTransactionTracking(vaultId, numAmount)
           }
         }
+        
+        // Proceed with transaction
         await executeTransaction()
       } else {
-        toast.error('Invalid OTP code')
+        toast.error(data.error || 'Invalid OTP code')
       }
     } catch (error: any) {
+      console.error('OTP verification error:', error)
       toast.error('OTP verification failed')
+    } finally {
+      setLoading(false)
     }
   }
 

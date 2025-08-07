@@ -43,7 +43,6 @@ export class VeryHighRiskApprovalService {
   private dailyTransactions: Map<string, number> = new Map();
   private lastResetDate: string = new Date().toDateString();
   private recentTransactions: Map<string, Array<{ amount: number; timestamp: number }>> = new Map();
-  private pendingOTPs: Map<string, { code: string; expiresAt: number }> = new Map();
 
   async checkVeryHighRiskApproval(
     amount: number,
@@ -108,13 +107,8 @@ export class VeryHighRiskApprovalService {
     // Handle OTP verification
     if (VERY_HIGH_RISK_POLICY.requireOTP && !otpVerified) {
       if (otpCode) {
-        const isValidOTP = await this.verifyOTP(fromAddress, otpCode);
-        if (!isValidOTP) {
-          throw new Error('Invalid OTP code. Please check your email and try again.');
-        }
-      } else {
-        // Generate and send OTP
-        const otpCode = await this.generateAndSendOTP(fromAddress);
+        // OTP code provided, but verification should be handled by the OTP API
+        // This will be verified in the send modal when the user submits the OTP
         return {
           amount,
           toAddress,
@@ -126,8 +120,23 @@ export class VeryHighRiskApprovalService {
           otpVerified: false,
           deviceFingerprint,
           ipAddress,
-          emailSent: true,
+          emailSent: false,
           otpCode
+        };
+      } else {
+        // No OTP code provided, indicate that OTP needs to be sent
+        return {
+          amount,
+          toAddress,
+          fromAddress,
+          timestamp: Date.now(),
+          requiresPasskey: VERY_HIGH_RISK_POLICY.requirePasskey,
+          requiresOTP: VERY_HIGH_RISK_POLICY.requireOTP,
+          passkeyVerified,
+          otpVerified: false,
+          deviceFingerprint,
+          ipAddress,
+          emailSent: true
         };
       }
     }
@@ -163,38 +172,6 @@ export class VeryHighRiskApprovalService {
   private async checkAddressRisk(address: string): Promise<boolean> {
     // This would integrate with Circle's Compliance Engine or external risk scoring
     // For now, return false as a placeholder
-    return false;
-  }
-
-  private async generateAndSendOTP(fromAddress: string): Promise<string> {
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = Date.now() + (10 * 60 * 1000); // 10 minutes
-
-    this.pendingOTPs.set(fromAddress, { code: otpCode, expiresAt });
-
-    // This would integrate with your email service
-    // await sendEmail(fromAddress, `Your OTP code is: ${otpCode}`);
-
-    return otpCode;
-  }
-
-  private async verifyOTP(fromAddress: string, otpCode: string): Promise<boolean> {
-    const pendingOTP = this.pendingOTPs.get(fromAddress);
-    
-    if (!pendingOTP) {
-      return false;
-    }
-
-    if (Date.now() > pendingOTP.expiresAt) {
-      this.pendingOTPs.delete(fromAddress);
-      return false;
-    }
-
-    if (pendingOTP.code === otpCode) {
-      this.pendingOTPs.delete(fromAddress);
-      return true;
-    }
-
     return false;
   }
 
