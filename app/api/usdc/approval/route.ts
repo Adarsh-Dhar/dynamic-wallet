@@ -9,6 +9,15 @@ async function handler(request: AuthenticatedRequest) {
     const body = await request.json()
     const { amount, toAddress, fromAddress, userCountry, deviceFingerprint, ipAddress, userLocation, passkeyVerified, passwordVerified, otpCode, manualApproved } = body
 
+    console.log('Approval API request:', {
+      userId: user.userId,
+      amount,
+      toAddress,
+      fromAddress,
+      passkeyVerified,
+      otpCode: otpCode ? 'provided' : 'not provided'
+    });
+
     // Validate required fields
     if (!amount || !toAddress || !fromAddress) {
       return NextResponse.json(
@@ -28,29 +37,21 @@ async function handler(request: AuthenticatedRequest) {
       deviceFingerprint,
       ipAddress,
       userLocation,
-      passkeyVerified: requiresPasskey ? passkeyVerified : false,
+      passkeyVerified: requiresPasskey ? (passkeyVerified === true || passkeyVerified === 'true') : false,
       passwordVerified,
       otpCode,
       manualApproved
     }
 
+    console.log('Approval request:', approvalRequest);
+
     const approvalResponse = await dynamicApprovalManager.processApproval(approvalRequest)
 
-    // If passkey is required but not verified, return passkey requirement
-    if (requiresPasskey && !passkeyVerified) {
-      return NextResponse.json({
-        ...approvalResponse,
-        requiresPasskey: true,
-        passkeyVerified: false,
-        message: 'Passkey verification required for this transaction'
-      })
-    }
+    console.log('Approval response:', approvalResponse);
 
-    return NextResponse.json({
-      ...approvalResponse,
-      requiresPasskey,
-      passkeyVerified
-    })
+    // Don't override the requiresPasskey field from the dynamic approval manager
+    // The very high risk service already handles this correctly
+    return NextResponse.json(approvalResponse)
   } catch (error: any) {
     console.error('Approval API error:', error)
     return NextResponse.json(

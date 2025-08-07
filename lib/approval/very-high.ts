@@ -55,6 +55,16 @@ export class VeryHighRiskApprovalService {
     otpVerified: boolean = false,
     otpCode?: string
   ): Promise<VeryHighRiskApproval> {
+    console.log('Very High Risk Approval Check:', {
+      amount,
+      toAddress,
+      fromAddress,
+      userCountry,
+      passkeyVerified,
+      otpVerified,
+      hasOtpCode: !!otpCode
+    });
+
     // Reset daily limits if it's a new day
     this.resetDailyLimitsIfNeeded();
 
@@ -95,20 +105,41 @@ export class VeryHighRiskApprovalService {
 
     // Time-based restrictions
     if (VERY_HIGH_RISK_POLICY.timeBasedRestrictions) {
-      const currentHour = new Date().getHours();
-      if (currentHour < 6 || currentHour > 22) {
-        throw new Error('Very high risk transactions are only allowed between 6 AM and 10 PM local time.');
-      }
+      // Removed time-based restrictions - transactions allowed at any time
+      // const currentHour = new Date().getHours();
+      // if (currentHour < 6 || currentHour > 22) {
+      //   throw new Error('Very high risk transactions are only allowed between 6 AM and 10 PM local time.');
+      // }
     }
 
     // Return response indicating verification status
     // Don't throw errors for verification requirements - let the approval system handle it
     
-    // Handle OTP verification
+    console.log('Very High Risk: Checking verifications - passkeyVerified:', passkeyVerified, 'otpVerified:', otpVerified);
+    
+    // If passkey is not verified, return passkey requirement
+    if (!passkeyVerified) {
+      console.log('Very High Risk: Passkey verification required');
+      return {
+        amount,
+        toAddress,
+        fromAddress,
+        timestamp: Date.now(),
+        requiresPasskey: VERY_HIGH_RISK_POLICY.requirePasskey,
+        requiresOTP: VERY_HIGH_RISK_POLICY.requireOTP,
+        passkeyVerified: false,
+        otpVerified: false,
+        deviceFingerprint,
+        ipAddress,
+        emailSent: false
+      };
+    }
+    
+    // Passkey is verified, check OTP
     if (VERY_HIGH_RISK_POLICY.requireOTP && !otpVerified) {
+      console.log('Very High Risk: OTP required but not verified');
       if (otpCode) {
         // OTP code provided, but verification should be handled by the OTP API
-        // This will be verified in the send modal when the user submits the OTP
         return {
           amount,
           toAddress,
@@ -116,7 +147,7 @@ export class VeryHighRiskApprovalService {
           timestamp: Date.now(),
           requiresPasskey: VERY_HIGH_RISK_POLICY.requirePasskey,
           requiresOTP: VERY_HIGH_RISK_POLICY.requireOTP,
-          passkeyVerified,
+          passkeyVerified: true,
           otpVerified: false,
           deviceFingerprint,
           ipAddress,
@@ -125,6 +156,7 @@ export class VeryHighRiskApprovalService {
         };
       } else {
         // No OTP code provided, indicate that OTP needs to be sent
+        console.log('Very High Risk: No OTP code provided, indicating OTP needs to be sent');
         return {
           amount,
           toAddress,
@@ -132,7 +164,7 @@ export class VeryHighRiskApprovalService {
           timestamp: Date.now(),
           requiresPasskey: VERY_HIGH_RISK_POLICY.requirePasskey,
           requiresOTP: VERY_HIGH_RISK_POLICY.requireOTP,
-          passkeyVerified,
+          passkeyVerified: true,
           otpVerified: false,
           deviceFingerprint,
           ipAddress,
@@ -141,6 +173,7 @@ export class VeryHighRiskApprovalService {
       }
     }
 
+    console.log('Very High Risk: All verifications complete');
     return {
       amount,
       toAddress,

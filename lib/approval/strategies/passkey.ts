@@ -28,8 +28,8 @@ export class PasskeyVerificationService {
    * Check if user has passkeys and requires passkey verification for transaction
    */
   async checkPasskeyRequirement(userId: string, amount: number): Promise<boolean> {
-    // For high-risk transactions, always require passkey if available
-    if (amount >= 3 && amount <= 5) {
+    // For high-risk and very-high-risk transactions, always require passkey if available
+    if (amount >= 3) {
       const hasPasskeys = await simpleWebAuthnService.hasPasskeys(userId);
       return hasPasskeys;
     }

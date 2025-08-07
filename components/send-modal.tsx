@@ -162,7 +162,7 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
         setApprovalStep('otp')
         setShowOtpInput(true)
         
-        // Send OTP to user's email
+        // Send OTP to user's email - authenticated request
         try {
           const response = await fetch('/api/otp/send', {
             method: 'POST',
@@ -170,6 +170,7 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
               'Content-Type': 'application/json',
             },
             credentials: 'include',
+            // Don't send body for authenticated requests - the API will use the authenticated user
           })
           
           const data = await response.json()
@@ -364,7 +365,28 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
         } else if (approval.requiresOTP) {
           setApprovalStep('otp')
           setShowOtpInput(true)
-          toast.info('OTP code sent to your email')
+          
+          // Send OTP to user's email - authenticated request
+          fetch('/api/otp/send', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            // Don't send body for authenticated requests - the API will use the authenticated user
+          }).then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              toast.success('OTP code sent to your email')
+            } else {
+              toast.error(data.error || 'Failed to send OTP')
+              setApprovalStep('initial')
+            }
+          }).catch(error => {
+            console.error('Failed to send OTP:', error)
+            toast.error('Failed to send OTP code')
+            setApprovalStep('initial')
+          })
         } else if (approval.requiresBiometric) {
           setApprovalStep('biometric')
         } else if (approval.requiresManualApproval) {

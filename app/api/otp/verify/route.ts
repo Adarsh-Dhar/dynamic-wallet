@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
 import { otpStrategy } from '@/lib/approval/strategies/otp';
 
-async function handler(request: AuthenticatedRequest) {
+async function handler(request: NextRequest, bodyData?: any) {
   try {
-    const user = request.user!;
-    const { code } = await request.json();
+    const body = bodyData || await request.json();
+    const { code, email, type } = body;
 
     if (!code) {
       return NextResponse.json(
@@ -13,6 +13,42 @@ async function handler(request: AuthenticatedRequest) {
         { status: 400 }
       );
     }
+
+    // If email and type are provided, this is a demo request
+    if (email && type) {
+      // Demo mode - create a consistent user ID for the demo based on email
+      const demoUserId = `demo-${email.replace(/[^a-zA-Z0-9]/g, '')}`;
+      
+      console.log('Demo OTP verification:', { email, type, demoUserId });
+      
+      // Verify OTP for demo
+      const result = await otpStrategy.verifyOtp(
+        demoUserId,
+        code,
+        type
+      );
+
+      if (result.success) {
+        return NextResponse.json({
+          success: true,
+          message: 'OTP code verified successfully',
+        });
+      } else {
+        return NextResponse.json(
+          { error: result.message },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Real implementation - requires authentication
+    const authenticatedRequest = request as AuthenticatedRequest;
+    const user = authenticatedRequest.user!;
+
+    console.log('Real OTP verification:', { 
+      userId: user.userId, 
+      code: code.substring(0, 2) + '****' // Log partial code for security
+    });
 
     // Verify OTP for transaction approval
     const result = await otpStrategy.verifyOtp(
@@ -41,4 +77,24 @@ async function handler(request: AuthenticatedRequest) {
   }
 }
 
-export const POST = withAuth(handler); 
+// Create a wrapper that handles both authenticated and unauthenticated requests
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { email, type } = body;
+
+    // If email and type are provided, this is a demo request (no auth required)
+    if (email && type) {
+      return await handler(request, body);
+    }
+
+    // Otherwise, require authentication
+    return await withAuth((req: NextRequest) => handler(req, body))(request);
+  } catch (error) {
+    console.error('OTP verify error:', error);
+    return NextResponse.json(
+      { error: 'Invalid request' },
+      { status: 400 }
+    );
+  }
+} 

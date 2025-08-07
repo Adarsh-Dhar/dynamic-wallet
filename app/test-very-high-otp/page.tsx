@@ -1,61 +1,84 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import { Loader2, Mail, Shield, AlertTriangle } from 'lucide-react'
-import { toast } from "sonner"
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { OtpForm } from '@/components/ui/otp-input';
 
-export default function TestVeryHighOtp() {
-  const [loading, setLoading] = useState(false)
-  const [otpCode, setOtpCode] = useState("")
-  const [showOtpInput, setShowOtpInput] = useState(false)
-  const [result, setResult] = useState("")
+export default function TestVeryHighOtpPage() {
+  const [amount, setAmount] = useState('6');
+  const [recipient, setRecipient] = useState('0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6');
+  const [showOtpForm, setShowOtpForm] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
 
-  const testSendOtp = async () => {
-    setLoading(true)
-    setResult("")
-    
+  const handleTestVeryHighRisk = async () => {
+    setLoading(true);
+    setMessage('');
+
     try {
-      const response = await fetch('/api/otp/send', {
+      // Test very high risk approval
+      const response = await fetch('/api/usdc/approval', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-      })
-      
-      const data = await response.json()
-      
+        body: JSON.stringify({
+          amount: parseFloat(amount),
+          toAddress: recipient,
+          fromAddress: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
+          userCountry: 'US',
+          deviceFingerprint: 'test-device-123',
+          ipAddress: '192.168.1.1'
+        }),
+      });
+
+      const data = await response.json();
+      console.log('Approval response:', data);
+
       if (response.ok) {
-        setResult(JSON.stringify(data, null, 2))
-        setShowOtpInput(true)
-        toast.success('OTP sent successfully! Check your email.')
+        if (data.requiresOTP) {
+          setMessage('Very high risk transaction requires OTP. Sending OTP to your email...');
+          setShowOtpForm(true);
+          
+          // Send OTP
+          const otpResponse = await fetch('/api/otp/send', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+          });
+
+          const otpData = await otpResponse.json();
+          console.log('OTP send response:', otpData);
+
+          if (otpResponse.ok) {
+            setMessage('OTP sent successfully! Check your email.');
+          } else {
+            setMessage(`Failed to send OTP: ${otpData.error}`);
+          }
+        } else {
+          setMessage(`Approval result: ${JSON.stringify(data, null, 2)}`);
+        }
       } else {
-        setResult(JSON.stringify(data, null, 2))
-        toast.error(data.error || 'Failed to send OTP')
+        setMessage(`Approval failed: ${data.error}`);
       }
     } catch (error) {
-      const errorMessage = `Error: ${error}`
-      setResult(errorMessage)
-      toast.error('Failed to send OTP')
+      console.error('Test error:', error);
+      setMessage(`Error: ${error}`);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const testVerifyOtp = async () => {
-    if (!otpCode) {
-      toast.error('Please enter OTP code')
-      return
-    }
+  const handleOtpSubmit = async (code: string) => {
+    setLoading(true);
+    setMessage('');
 
-    setLoading(true)
-    setResult("")
-    
     try {
       const response = await fetch('/api/otp/verify', {
         method: 'POST',
@@ -63,220 +86,100 @@ export default function TestVeryHighOtp() {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ code: otpCode }),
-      })
-      
-      const data = await response.json()
-      
+        body: JSON.stringify({ code }),
+      });
+
+      const data = await response.json();
+      console.log('OTP verify response:', data);
+
       if (response.ok) {
-        setResult(JSON.stringify(data, null, 2))
-        toast.success('OTP verified successfully!')
-        setShowOtpInput(false)
-        setOtpCode("")
+        setMessage('OTP verified successfully! Transaction approved.');
+        setShowOtpForm(false);
       } else {
-        setResult(JSON.stringify(data, null, 2))
-        toast.error(data.error || 'Invalid OTP code')
+        setMessage(`OTP verification failed: ${data.error}`);
       }
     } catch (error) {
-      const errorMessage = `Error: ${error}`
-      setResult(errorMessage)
-      toast.error('OTP verification failed')
+      console.error('OTP verification error:', error);
+      setMessage(`Error: ${error}`);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
-
-  const testVeryHighRiskTransaction = async () => {
-    setLoading(true)
-    setResult("")
-    
-    try {
-      // Simulate a very high-risk transaction ($6 USDC)
-      const transactionData = {
-        amount: 6,
-        toAddress: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6",
-        fromAddress: "test-vault-id",
-        userCountry: "US",
-        deviceFingerprint: "device123",
-        ipAddress: "192.168.1.1"
-      }
-
-      const response = await fetch('/api/usdc/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(transactionData),
-      })
-      
-      const data = await response.json()
-      setResult(JSON.stringify(data, null, 2))
-      
-      if (response.ok) {
-        toast.success('Transaction processed successfully!')
-      } else {
-        toast.error(data.error || 'Transaction failed')
-      }
-    } catch (error) {
-      const errorMessage = `Error: ${error}`
-      setResult(errorMessage)
-      toast.error('Transaction test failed')
-    } finally {
-      setLoading(false)
-    }
-  }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-white mb-2">Very High Risk OTP Test</h1>
-          <p className="text-slate-400">Test the OTP functionality for very high-risk transactions ($5-$7 USDC)</p>
-        </div>
+    <div className="min-h-screen bg-gray-50 py-12">
+      <div className="container mx-auto px-4">
+        <div className="max-w-2xl mx-auto">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              Test Very High Risk OTP
+            </h1>
+            <p className="text-lg text-gray-600">
+              Test the very high risk approval flow with OTP
+            </p>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* OTP Send Test */}
-          <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
+          <Card>
             <CardHeader>
-              <CardTitle className="text-white flex items-center space-x-2">
-                <Mail className="w-5 h-5 text-blue-400" />
-                Send OTP Test
-              </CardTitle>
-              <CardDescription className="text-slate-400">
-                Test sending OTP to your email for transaction approval
+              <CardTitle>Very High Risk Transaction Test</CardTitle>
+              <CardDescription>
+                Test a transaction that requires OTP verification
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="amount">Amount (USDC)</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="Enter amount (5-7 USDC for very high risk)"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="recipient">Recipient Address</Label>
+                <Input
+                  id="recipient"
+                  type="text"
+                  value={recipient}
+                  onChange={(e) => setRecipient(e.target.value)}
+                  placeholder="Enter recipient address"
+                />
+              </div>
+
               <Button 
-                onClick={testSendOtp}
+                onClick={handleTestVeryHighRisk}
                 disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-700"
+                className="w-full"
               >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Sending OTP...
-                  </>
-                ) : (
-                  <>
-                    <Mail className="w-4 h-4 mr-2" />
-                    Send OTP
-                  </>
-                )}
+                {loading ? 'Testing...' : 'Test Very High Risk Approval'}
               </Button>
-            </CardContent>
-          </Card>
 
-          {/* OTP Verify Test */}
-          <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center space-x-2">
-                <Shield className="w-5 h-5 text-green-400" />
-                Verify OTP Test
-              </CardTitle>
-              <CardDescription className="text-slate-400">
-                Test verifying the OTP code you received
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {showOtpInput ? (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="otp" className="text-slate-300">OTP Code</Label>
-                    <Input
-                      id="otp"
-                      type="text"
-                      placeholder="Enter 6-digit code"
-                      value={otpCode}
-                      onChange={(e) => setOtpCode(e.target.value)}
-                      maxLength={6}
-                      className="bg-slate-700 border-slate-600 text-white"
-                    />
-                  </div>
-                  <Button 
-                    onClick={testVerifyOtp}
-                    disabled={loading || !otpCode}
-                    className="w-full bg-green-600 hover:bg-green-700"
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Verifying...
-                      </>
-                    ) : (
-                      <>
-                        <Shield className="w-4 h-4 mr-2" />
-                        Verify OTP
-                      </>
-                    )}
-                  </Button>
-                </>
-              ) : (
-                <div className="text-center text-slate-400">
-                  <Mail className="w-8 h-8 mx-auto mb-2" />
-                  <p>Send OTP first to test verification</p>
+              {message && (
+                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+                  <p className="text-blue-800">{message}</p>
+                </div>
+              )}
+
+              {showOtpForm && (
+                <div className="mt-6">
+                  <OtpForm
+                    type="TRANSACTION_APPROVAL"
+                    email="test@example.com"
+                    onSubmit={handleOtpSubmit}
+                    onResend={() => handleTestVeryHighRisk()}
+                    isLoading={loading}
+                    isResendLoading={loading}
+                    resendCooldown={60}
+                  />
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
-
-        {/* Very High Risk Transaction Test */}
-        <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center space-x-2">
-              <AlertTriangle className="w-5 h-5 text-orange-400" />
-              Very High Risk Transaction Test
-            </CardTitle>
-            <CardDescription className="text-slate-400">
-              Test a $6 USDC transaction that should trigger OTP verification
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/50">
-                  <AlertTriangle className="w-3 h-3 mr-1" />
-                  Very High Risk
-                </Badge>
-                <span className="text-slate-400">Amount: $6 USDC</span>
-              </div>
-              <Button 
-                onClick={testVeryHighRiskTransaction}
-                disabled={loading}
-                className="w-full bg-orange-600 hover:bg-orange-700"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Testing Transaction...
-                  </>
-                ) : (
-                  <>
-                    <AlertTriangle className="w-4 h-4 mr-2" />
-                    Test Very High Risk Transaction
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Results */}
-        {result && (
-          <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="text-white">Test Results</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <pre className="bg-slate-700 p-4 rounded text-sm text-slate-200 overflow-auto">
-                {result}
-              </pre>
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
-  )
+  );
 } 

@@ -37,6 +37,89 @@ export class OtpStrategy {
   }
 
   /**
+   * Ensure demo user exists in database and return the user ID to use
+   */
+  private async ensureDemoUser(userId: string, email: string): Promise<string> {
+    // Check if this is a demo user (starts with 'demo-')
+    if (!userId.startsWith('demo-')) {
+      // This is a real user, not a demo user
+      // Just verify the user exists and return the ID
+      try {
+        const existingUser = await prisma.user.findUnique({
+          where: { id: userId },
+        });
+
+        if (existingUser) {
+          console.log('Real user found:', { userId, email: existingUser.email });
+          return userId;
+        } else {
+          console.error('Real user not found:', { userId });
+          throw new Error('User not found');
+        }
+      } catch (error) {
+        console.error('Error looking up real user:', error);
+        throw error;
+      }
+    }
+
+    try {
+      // Try to find the demo user by ID first
+      const existingUser = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (existingUser) {
+        console.log('Demo user already exists:', { userId, email });
+        return userId; // User already exists
+      }
+
+      // Check if the email already exists
+      const existingUserByEmail = await prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (existingUserByEmail) {
+        console.log('Email already exists, using existing user for demo:', { userId, email, existingUserId: existingUserByEmail.id });
+        // For demo purposes, we'll use the existing user's ID
+        return existingUserByEmail.id;
+      }
+
+      // Create demo user with a unique email to avoid conflicts
+      const demoEmail = `demo-${Date.now()}-${email}`;
+      console.log('Creating demo user:', { userId, originalEmail: email, demoEmail });
+      
+      await prisma.user.create({
+        data: {
+          id: userId,
+          email: demoEmail, // Use a unique demo email
+          passwordHash: 'demo-password-hash', // Placeholder for demo users
+        },
+      });
+      console.log('Demo user created successfully');
+      return userId;
+    } catch (error) {
+      console.error('Error ensuring demo user exists:', error);
+      // Don't throw here, as we want to continue with OTP creation
+      // Instead, try to find an existing user with the same email
+      try {
+        const existingUser = await prisma.user.findUnique({
+          where: { email },
+        });
+        
+        if (existingUser) {
+          console.log('Using existing user for demo OTP:', { userId, email, existingUserId: existingUser.id });
+          return existingUser.id;
+        }
+      } catch (fallbackError) {
+        console.error('Fallback user lookup failed:', fallbackError);
+      }
+      
+      // If all else fails, return the original userId
+      return userId;
+    }
+  }
+
+  /**
    * Create and store an OTP code in the database
    */
   private async createOtpCode(userId: string, type: OtpType): Promise<string> {
@@ -171,8 +254,11 @@ export class OtpStrategy {
     try {
       console.log('Starting OTP send process for:', { userId, email, type });
       
+      // Ensure demo user exists if this is a demo request
+      const userToUse = await this.ensureDemoUser(userId, email);
+      
       // Check if user has a recent OTP
-      const hasRecent = await this.hasRecentOtp(userId, type);
+      const hasRecent = await this.hasRecentOtp(userToUse, type);
       if (hasRecent) {
         console.log('User has recent OTP, returning cooldown message');
         return {
@@ -183,7 +269,7 @@ export class OtpStrategy {
 
       // Create OTP code
       console.log('Creating OTP code...');
-      const code = await this.createOtpCode(userId, type);
+      const code = await this.createOtpCode(userToUse, type);
       console.log('OTP code created:', code);
 
       // Send email
@@ -209,10 +295,13 @@ export class OtpStrategy {
    */
   async verifyOtp(userId: string, code: string, type: OtpType): Promise<{ success: boolean; message: string }> {
     try {
+      // Ensure demo user exists if this is a demo request
+      const userToUse = await this.ensureDemoUser(userId, 'demo@example.com'); // Use placeholder email for demo users
+      
       // Find the OTP code
       const otpCode = await prisma.otpCode.findFirst({
         where: {
-          userId,
+          userId: userToUse,
           code,
           type,
           isUsed: false,

@@ -129,20 +129,43 @@ export class DynamicApprovalManager {
           };
 
         case 'very-high':
+          console.log('Processing very-high risk approval');
+          console.log('Request parameters:', {
+            amount,
+            toAddress,
+            fromAddress,
+            userCountry,
+            deviceFingerprint,
+            ipAddress,
+            passkeyVerified: request.passkeyVerified,
+            otpVerified: request.otpCode ? true : false,
+            otpCode: request.otpCode
+          });
+          
           const veryHighResult = await veryHighRiskApprovalService.checkVeryHighRiskApproval(
             amount, toAddress, fromAddress, userCountry, deviceFingerprint, ipAddress,
             request.passkeyVerified, request.otpCode ? true : false, request.otpCode
           );
-          return {
+          console.log('Very-high risk result:', veryHighResult);
+          console.log('Approval manager logic:', {
+            passkeyVerified: veryHighResult.passkeyVerified,
+            otpVerified: veryHighResult.otpVerified,
             approved: veryHighResult.passkeyVerified && veryHighResult.otpVerified,
-            riskLevel: 'very-high',
+            requiresAction: !veryHighResult.passkeyVerified || !veryHighResult.otpVerified,
+            actionRequired: !veryHighResult.passkeyVerified ? 'Passkey verification required' : 
+                           !veryHighResult.otpVerified ? 'OTP verification required' : undefined
+          });
+          
+          const response: ApprovalResponse = {
+            approved: veryHighResult.passkeyVerified && veryHighResult.otpVerified,
+            riskLevel: 'very-high' as const,
             requiresAction: !veryHighResult.passkeyVerified || !veryHighResult.otpVerified,
             actionRequired: !veryHighResult.passkeyVerified ? 'Passkey verification required' : 
                            !veryHighResult.otpVerified ? 'OTP verification required' : undefined,
             autoApproved: false,
-            requiresPasskey: true,
+            requiresPasskey: veryHighResult.requiresPasskey,
             requiresPassword: false,
-            requiresOTP: true,
+            requiresOTP: veryHighResult.requiresOTP,
             requiresBiometric: false,
             requiresManualApproval: false,
             requiresComplianceReview: false,
@@ -150,6 +173,8 @@ export class DynamicApprovalManager {
             nextSteps: !veryHighResult.passkeyVerified ? ['Complete passkey verification'] :
                       !veryHighResult.otpVerified ? ['Check email for OTP code', 'Enter OTP code'] : undefined
           };
+          console.log('Very-high risk response:', response);
+          return response;
 
         case 'extreme':
           const extremeResult = await extremeRiskApprovalService.checkExtremeRiskApproval(
