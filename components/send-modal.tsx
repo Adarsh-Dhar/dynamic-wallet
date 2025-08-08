@@ -550,7 +550,7 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
                 placeholder="Enter 6-digit code"
                 value={otpCode}
                 onChange={(e) => setOtpCode(e.target.value)}
-                className="bg-slate-700 border-slate-600"
+                className="bg-slate-800/50 border-slate-700 text-slate-200 placeholder:text-slate-500 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                 maxLength={6}
               />
               <Button 
@@ -665,10 +665,15 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="bg-white/20 border-white/20 backdrop-blur-xl">
           <DialogHeader>
-            <DialogTitle>Send {selectedAsset}</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-gray-900 flex items-center space-x-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-red-400 rounded-full flex items-center justify-center">
+                <ArrowRight className="w-4 h-4 text-white" />
+              </div>
+              <span>Send {selectedAsset}</span>
+            </DialogTitle>
+            <DialogDescription className="text-gray-900">
               Transfer {selectedAsset} to another wallet address
             </DialogDescription>
           </DialogHeader>
@@ -676,18 +681,18 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
           <div className="space-y-4">
             {/* Asset Selection */}
             <div className="space-y-2">
-              <Label htmlFor="asset">Asset</Label>
+              <Label htmlFor="asset" className="text-gray-900">Asset</Label>
               <Select value={selectedAsset} onValueChange={setSelectedAsset}>
-                <SelectTrigger className="bg-slate-700 border-slate-600">
+                <SelectTrigger className="bg-white/50 border-white/20 text-gray-900 placeholder:text-gray-500">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-slate-700 border-slate-600">
+                <SelectContent className="bg-white/90 border-white/20">
                   {assets.map((asset) => (
                     <SelectItem key={asset.symbol} value={asset.symbol}>
                       <div className="flex items-center space-x-2">
                         <span>{asset.icon}</span>
                         <span>{asset.name}</span>
-                        <span className="text-slate-400">({asset.balance})</span>
+                        <span className="text-gray-500">({asset.balance})</span>
                       </div>
                     </SelectItem>
                   ))}
@@ -697,19 +702,19 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
 
             {/* Recipient Address */}
             <div className="space-y-2">
-              <Label htmlFor="recipient">Recipient Address</Label>
+              <Label htmlFor="recipient" className="text-gray-900">Recipient Address</Label>
               <div className="relative">
                 <Input
                   id="recipient"
                   placeholder="0x..."
                   value={recipient}
                   onChange={(e) => setRecipient(e.target.value)}
-                  className="bg-slate-700 border-slate-600 pr-10"
+                  className="bg-white/50 border-white/20 text-gray-900 placeholder:text-gray-500 pr-10"
                 />
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="absolute right-1 top-1 h-6 w-6 p-0"
+                  className="absolute right-1 top-1 h-6 w-6 p-0 text-gray-600 hover:text-gray-900"
                 >
                   <Scan className="h-4 w-4" />
                 </Button>
@@ -718,7 +723,7 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
 
             {/* Amount */}
             <div className="space-y-2">
-              <Label htmlFor="amount">Amount</Label>
+              <Label htmlFor="amount" className="text-gray-900">Amount</Label>
               <div className="relative">
                 <Input
                   id="amount"
@@ -726,19 +731,19 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
                   placeholder="0.00"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="bg-slate-700 border-slate-600 pr-16"
+                  className="bg-white/50 border-white/20 text-gray-900 placeholder:text-gray-500 pr-16"
                 />
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={handleMaxAmount}
-                  className="absolute right-1 top-1 h-6 w-6 p-0 text-xs"
+                  className="absolute right-1 top-1 h-6 w-6 p-0 text-xs text-gray-600 hover:text-gray-900"
                 >
                   MAX
                 </Button>
               </div>
               {balanceLoading && (
-                <div className="flex items-center space-x-2 text-sm text-slate-400">
+                <div className="flex items-center space-x-2 text-sm text-gray-600">
                   <Loader2 className="w-3 h-3 animate-spin" />
                   <span>Loading balance...</span>
                 </div>
@@ -747,30 +752,30 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
 
             {/* Error Message */}
             {errorMessage && (
-              <div className="flex items-center space-x-2 p-3 bg-red-900/20 border border-red-600/50 rounded-md">
-                <AlertCircle className="w-4 h-4 text-red-400" />
-                <span className="text-sm text-red-200">{errorMessage}</span>
+              <div className="flex items-center space-x-2 p-3 bg-red-100/80 border border-red-200 rounded-md">
+                <AlertCircle className="w-4 h-4 text-red-500" />
+                <span className="text-sm text-red-600">{errorMessage}</span>
               </div>
             )}
 
             {/* Transaction Summary */}
             {amount && recipient && approvalStep === 'initial' && (
-              <Card className="bg-slate-700/50 border-slate-600">
+              <Card className="bg-white/50 border-white/20">
                 <CardContent className="p-4 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Risk Level</span>
+                    <span className="text-gray-600">Risk Level</span>
                     <Badge className={getRiskLevelColor(dynamicApprovalManager.getRiskLevel(parseFloat(amount)))}>
                       {getRiskLevelIcon(dynamicApprovalManager.getRiskLevel(parseFloat(amount)))}
                       {dynamicApprovalManager.getRiskLevelInfo(dynamicApprovalManager.getRiskLevel(parseFloat(amount))).name}
                     </Badge>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Network Fee</span>
-                    <span>~$0.50</span>
+                    <span className="text-gray-600">Network Fee</span>
+                    <span className="text-gray-900">~$0.50</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Total</span>
-                    <span className="font-semibold">{amount} USDC</span>
+                    <span className="text-gray-600">Total</span>
+                    <span className="font-semibold text-gray-900">{amount} USDC</span>
                   </div>
                 </CardContent>
               </Card>
@@ -781,34 +786,34 @@ export default function SendModal({ open, onOpenChange, vaultId }: SendModalProp
 
             {/* Transaction Status */}
             {transactionStatus === 'pending' && approvalStep === 'initial' && (
-              <div className="flex items-center space-x-2 p-3 bg-blue-900/20 border border-blue-600/50 rounded-md">
-                <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
-                <span className="text-sm text-blue-200">Processing transaction...</span>
+              <div className="flex items-center space-x-2 p-3 bg-blue-100/80 border border-blue-200 rounded-md">
+                <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                <span className="text-sm text-blue-600">Processing transaction...</span>
               </div>
             )}
 
             {transactionStatus === 'success' && (
-              <div className="flex items-center space-x-2 p-3 bg-green-900/20 border border-green-600/50 rounded-md">
-                <CheckCircle className="w-4 h-4 text-green-400" />
-                <span className="text-sm text-green-200">Transaction successful!</span>
+              <div className="flex items-center space-x-2 p-3 bg-green-100/80 border border-green-200 rounded-md">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                <span className="text-sm text-green-600">Transaction successful!</span>
               </div>
             )}
 
             {/* Action Buttons */}
             <div className="flex space-x-3">
               <Button 
-                variant="outline" 
+                variant="ghost"
                 onClick={() => {
                   onOpenChange(false)
                   resetApprovalStates()
                 }} 
-                className="flex-1 border-slate-600"
+                className="flex-1 text-slate-600 hover:text-gray-900"
                 disabled={loading}
               >
                 Cancel
               </Button>
               <Button 
-                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                className="flex-1 bg-gradient-to-br from-orange-400 to-red-400 text-white hover:from-orange-500 hover:to-red-500"
                 onClick={handleSend}
                 disabled={loading || !recipient || !amount || transactionStatus === 'success' || !vaultId || approvalStep !== 'initial'}
               >

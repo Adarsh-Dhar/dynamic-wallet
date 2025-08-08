@@ -134,9 +134,11 @@ export default function WalletActions() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <div className="flex items-center space-x-2 text-white">
-          <Loader2 className="w-6 h-6 animate-spin" />
+      <div className="min-h-screen bg-gradient-to-br from-blue-100 via-purple-50 to-pink-100 flex items-center justify-center">
+        <div className="flex items-center space-x-2 text-gray-900">
+          <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-red-400 rounded-full flex items-center justify-center">
+            <Loader2 className="w-4 h-4 animate-spin text-white" />
+          </div>
           <span>Loading wallet...</span>
         </div>
       </div>
@@ -145,11 +147,14 @@ export default function WalletActions() {
 
   if (!selectedWallet) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <div className="text-center text-white">
-          <h2 className="text-xl font-semibold mb-2">Wallet not found</h2>
-          <p className="text-slate-400 mb-4">The requested wallet could not be found.</p>
-          <Button onClick={handleBack} className="bg-blue-600 hover:bg-blue-700">
+      <div className="min-h-screen bg-gradient-to-br from-blue-100 via-purple-50 to-pink-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-red-400 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Wallet className="w-8 h-8 text-white" />
+          </div>
+          <h2 className="text-2xl font-semibold text-gray-900 mb-2">Wallet not found</h2>
+          <p className="text-gray-600 mb-6">The requested wallet could not be found.</p>
+          <Button onClick={handleBack} className="bg-black hover:bg-gray-900 text-white">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Dashboard
           </Button>
@@ -159,7 +164,7 @@ export default function WalletActions() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-100 via-purple-50 to-pink-100 p-6">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -167,25 +172,32 @@ export default function WalletActions() {
             <Button 
               variant="ghost" 
               onClick={handleBack}
-              className="text-slate-400 hover:text-white"
+              className="text-gray-600 hover:text-gray-900"
             >
               <ArrowLeft className="w-5 h-5 mr-2" />
               Back
             </Button>
             <div>
-              <h1 className="text-2xl font-bold text-white">{selectedWallet.label}</h1>
-              <p className="text-slate-400 text-sm">Wallet Actions</p>
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-red-400 rounded-full flex items-center justify-center">
+                  <Wallet className="w-5 h-5 text-white" />
+                </div>
+                <h1 className="text-2xl font-bold text-gray-900">{selectedWallet.label}</h1>
+              </div>
+              <p className="text-gray-600 text-sm mt-1">Wallet Actions</p>
             </div>
           </div>
         </div>
 
         {/* Wallet Balance Card */}
-        <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
+        <Card className="bg-white/20 border-white/30 backdrop-blur-xl shadow-xl">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <Wallet className="w-5 h-5 text-blue-400" />
-                <CardTitle className="text-white">Wallet Balance</CardTitle>
+                <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-red-400 rounded-full flex items-center justify-center">
+                  <Wallet className="w-4 h-4 text-white" />
+                </div>
+                <CardTitle className="text-gray-900">Wallet Balance</CardTitle>
               </div>
               <div className="flex items-center space-x-2">
                 <Button
@@ -193,7 +205,7 @@ export default function WalletActions() {
                   size="sm"
                   onClick={handleRefreshBalance}
                   disabled={usdcBalanceLoading}
-                  className="text-slate-400 hover:text-white p-1"
+                  className="text-gray-600 hover:text-gray-900 p-1"
                 >
                   <RefreshCw className={`w-4 h-4 ${usdcBalanceLoading ? 'animate-spin' : ''}`} />
                 </Button>
@@ -201,93 +213,99 @@ export default function WalletActions() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowBalance(!showBalance)}
-                  className="text-slate-400 hover:text-white p-1"
+                  className="text-gray-600 hover:text-gray-900 p-1"
                 >
                   {showBalance ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                 </Button>
               </div>
             </div>
-            <CardDescription className="text-slate-400">
+            <CardDescription className="text-gray-600">
               {selectedWallet.address ? (
                 <div className="flex items-center space-x-2">
                   <span className="font-mono text-sm">{selectedWallet.address}</span>
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="p-1 text-slate-400 hover:text-white"
+                    className="p-1 text-gray-600 hover:text-gray-900"
                     onClick={copyAddress}
                   >
                     <Copy className="w-3 h-3" />
                   </Button>
                 </div>
               ) : (
-                <span className="italic text-slate-500">No address</span>
+                <span className="italic text-gray-500">No address</span>
               )}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {/* USDC Balance */}
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between p-3 bg-white/30 rounded-xl border border-white/30">
                 <div className="flex items-center space-x-2">
-                  <span className="text-2xl">💵</span>
-                  <span className="text-white font-medium">USDC</span>
+                  <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center">
+                    <span className="text-xl text-white">💵</span>
+                  </div>
+                  <span className="text-gray-900 font-medium">USDC</span>
                 </div>
                 <div className="text-right">
                   {showBalance ? (
                     usdcBalanceLoading ? (
                       <div className="flex items-center space-x-2">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span className="text-slate-400">Loading...</span>
+                        <Loader2 className="w-4 h-4 animate-spin text-gray-600" />
+                        <span className="text-gray-600">Loading...</span>
                       </div>
                     ) : (
-                      <div className="text-2xl font-bold text-white">
+                      <div className="text-2xl font-bold text-gray-900">
                         {usdcBalance ? `${parseFloat(usdcBalance.balance).toFixed(2)} USDC` : '0.00 USDC'}
                       </div>
                     )
                   ) : (
-                    <div className="text-2xl font-bold text-white">••••••</div>
+                    <div className="text-2xl font-bold text-gray-900">••••••</div>
                   )}
                 </div>
               </div>
 
               {/* ETH Balance (placeholder) */}
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between p-3 bg-white/30 rounded-xl border border-white/30">
                 <div className="flex items-center space-x-2">
-                  <span className="text-2xl">⟠</span>
-                  <span className="text-white font-medium">ETH</span>
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full flex items-center justify-center">
+                    <span className="text-xl text-white">⟠</span>
+                  </div>
+                  <span className="text-gray-900 font-medium">ETH</span>
                 </div>
                 <div className="text-right">
                   {showBalance ? (
                     balanceLoading ? (
                       <div className="flex items-center space-x-2">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span className="text-slate-400">Loading...</span>
+                        <Loader2 className="w-4 h-4 animate-spin text-gray-600" />
+                        <span className="text-gray-600">Loading...</span>
                       </div>
                     ) : (
-                      <span className="text-slate-400">Balance not available</span>
+                      <span className="text-gray-600">Balance not available</span>
                     )
                   ) : (
-                    <div className="text-2xl font-bold text-white">••••••</div>
+                    <div className="text-2xl font-bold text-gray-900">••••••</div>
                   )}
                 </div>
               </div>
             </div>
             
-            <div className="text-slate-400 text-sm mt-4">
+            <div className="text-gray-600 text-sm mt-4">
               Connect to Sepolia network to view real-time balances
             </div>
           </CardContent>
         </Card>
 
         {/* Security Levels Info */}
-        <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
+        <Card className="bg-white/20 border-white/30 backdrop-blur-xl shadow-xl">
           <CardHeader>
-            <CardTitle className="text-white flex items-center space-x-2">
-              <Shield className="w-5 h-5 text-blue-400" />
+            <CardTitle className="text-gray-900 flex items-center space-x-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full flex items-center justify-center">
+                <Shield className="w-4 h-4 text-white" />
+              </div>
               Dynamic Security Levels
             </CardTitle>
-            <CardDescription className="text-slate-400">
+            <CardDescription className="text-gray-600">
               Transaction security is automatically adjusted based on amount and risk factors
             </CardDescription>
           </CardHeader>
@@ -297,15 +315,15 @@ export default function WalletActions() {
                 const riskLevel = dynamicApprovalManager.getRiskLevel(amount)
                 const riskInfo = getRiskLevelInfo(amount)
                 return (
-                  <div key={amount} className="p-3 rounded-lg bg-slate-700/50 border border-slate-600">
+                  <div key={amount} className="p-3 rounded-xl bg-white/30 border border-white/30">
                     <div className="flex items-center justify-between mb-2">
                       <Badge className={getRiskLevelColor(riskLevel)}>
                         {getRiskLevelIcon(riskLevel)}
                         {riskInfo.name}
                       </Badge>
                     </div>
-                    <div className="text-xs text-slate-400">
-                      <p className="font-medium text-white">${amount}+</p>
+                    <div className="text-xs text-gray-600">
+                      <p className="font-medium text-gray-900">${amount}+</p>
                       <p className="mt-1">{riskInfo.description}</p>
                     </div>
                   </div>
@@ -318,30 +336,30 @@ export default function WalletActions() {
         {/* Action Buttons */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Send Button */}
-          <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm hover:bg-slate-800/70 transition-colors cursor-pointer">
+          <Card className="bg-white/20 border-white/30 backdrop-blur-xl shadow-xl hover:bg-white/30 transition-colors cursor-pointer">
             <CardContent className="p-6" onClick={() => setShowSendModal(true)}>
               <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-red-400 rounded-full flex items-center justify-center">
                   <Send className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-white">Send USDC</h3>
-                  <p className="text-slate-400 text-sm">Send USDC with dynamic security controls</p>
+                  <h3 className="text-lg font-semibold text-gray-900">Send USDC</h3>
+                  <p className="text-gray-600 text-sm">Send USDC with dynamic security controls</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Receive Button */}
-          <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm hover:bg-slate-800/70 transition-colors cursor-pointer">
+          <Card className="bg-white/20 border-white/30 backdrop-blur-xl shadow-xl hover:bg-white/30 transition-colors cursor-pointer">
             <CardContent className="p-6" onClick={() => setShowReceiveModal(true)}>
               <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center">
                   <Download className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-white">Receive</h3>
-                  <p className="text-slate-400 text-sm">Receive cryptocurrency from others</p>
+                  <h3 className="text-lg font-semibold text-gray-900">Receive</h3>
+                  <p className="text-gray-600 text-sm">Receive cryptocurrency from others</p>
                 </div>
               </div>
             </CardContent>
@@ -349,10 +367,10 @@ export default function WalletActions() {
         </div>
 
         {/* Quick Actions */}
-        <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
+        <Card className="bg-white/20 border-white/30 backdrop-blur-xl shadow-xl">
           <CardHeader>
-            <CardTitle className="text-white">Quick Actions</CardTitle>
-            <CardDescription className="text-slate-400">
+            <CardTitle className="text-gray-900">Quick Actions</CardTitle>
+            <CardDescription className="text-gray-600">
               Common wallet operations
             </CardDescription>
           </CardHeader>
@@ -360,7 +378,7 @@ export default function WalletActions() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <Button 
                 variant="outline" 
-                className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                className="border-gray-300 text-gray-900 hover:bg-black hover:text-white"
                 onClick={() => setShowSendModal(true)}
               >
                 <Send className="w-4 h-4 mr-2" />
@@ -368,7 +386,7 @@ export default function WalletActions() {
               </Button>
               <Button 
                 variant="outline" 
-                className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                className="border-gray-300 text-gray-900 hover:bg-black hover:text-white"
                 onClick={() => setShowReceiveModal(true)}
               >
                 <Download className="w-4 h-4 mr-2" />
@@ -376,7 +394,7 @@ export default function WalletActions() {
               </Button>
               <Button 
                 variant="outline" 
-                className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                className="border-gray-300 text-gray-900 hover:bg-black hover:text-white"
                 onClick={copyAddress}
                 disabled={!selectedWallet?.address}
               >
@@ -385,7 +403,7 @@ export default function WalletActions() {
               </Button>
               <Button 
                 variant="outline" 
-                className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                className="border-gray-300 text-gray-900 hover:bg-black hover:text-white"
                 onClick={viewOnExplorer}
                 disabled={!selectedWallet?.address}
               >

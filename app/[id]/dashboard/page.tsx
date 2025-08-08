@@ -107,9 +107,11 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <div className="flex items-center space-x-2 text-white">
-          <Loader2 className="w-6 h-6 animate-spin" />
+      <div className="min-h-screen bg-gradient-to-br from-blue-100 via-purple-50 to-pink-100 flex items-center justify-center">
+        <div className="flex items-center space-x-2 text-gray-900">
+          <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-red-400 rounded-full flex items-center justify-center">
+            <Loader2 className="w-4 h-4 animate-spin text-white" />
+          </div>
           <span>Loading dashboard...</span>
         </div>
       </div>
@@ -117,22 +119,24 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-blue-100 via-purple-50 to-pink-100">
       {/* Header */}
-      <div className="border-b border-slate-700 bg-slate-800/50 backdrop-blur-sm">
+      <div className="border-b border-white/20 bg-white/20 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <Wallet className="w-6 h-6 text-blue-400" />
-                <h1 className="text-xl font-semibold text-white">CryptoVault Dashboard</h1>
+                <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-red-400 rounded-full flex items-center justify-center">
+                  <Wallet className="w-4 h-4 text-white" />
+                </div>
+                <h1 className="text-xl font-semibold text-gray-900">CryptoVault Dashboard</h1>
               </div>
             </div>
             <div className="flex items-center space-x-4">
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-slate-300 hover:text-white"
+                className="text-gray-600 hover:text-gray-900"
               >
                 <Settings className="w-4 h-4" />
               </Button>
@@ -140,7 +144,7 @@ export default function Dashboard() {
                 variant="ghost"
                 size="sm"
                 onClick={handleLogout}
-                className="text-slate-300 hover:text-white"
+                className="text-gray-600 hover:text-gray-900"
               >
                 <LogOut className="w-4 h-4" />
               </Button>
@@ -155,60 +159,68 @@ export default function Dashboard() {
           {/* Left Column - Overview & Stats */}
           <div className="lg:col-span-2 space-y-6">
             {/* Welcome Card */}
-            <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
+            <Card className="bg-white/20 border-white/30 backdrop-blur-xl shadow-xl">
               <CardHeader>
-                <CardTitle className="text-white flex items-center space-x-2">
-                  <User className="w-5 h-5 text-blue-400" />
-                  Welcome back!
+                <CardTitle className="text-gray-900 flex items-center space-x-2">
+                  <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-red-400 rounded-full flex items-center justify-center">
+                    <User className="w-4 h-4 text-white" />
+                  </div>
+                  <span>Welcome back!</span>
                 </CardTitle>
-                <CardDescription className="text-slate-400">
+                <CardDescription className="text-gray-600">
                   Manage your crypto wallets and track your portfolio
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 bg-slate-700/50 rounded-lg">
+                  <div className="p-4 bg-white/30 rounded-xl border border-white/30">
                     <div className="flex items-center space-x-2 mb-2">
-                      <Wallet className="w-4 h-4 text-blue-400" />
-                      <span className="text-white text-sm font-medium">Total Wallets</span>
+                      <div className="w-6 h-6 bg-gradient-to-br from-orange-400 to-red-400 rounded-full flex items-center justify-center">
+                        <Wallet className="w-3 h-3 text-white" />
+                      </div>
+                      <span className="text-gray-900 text-sm font-medium">Total Wallets</span>
                     </div>
-                    <p className="text-2xl font-bold text-white">{vaults.length}</p>
+                    <p className="text-2xl font-bold text-gray-900">{vaults.length}</p>
                   </div>
-                  <div className="p-4 bg-slate-700/50 rounded-lg">
+                  <div className="p-4 bg-white/30 rounded-xl border border-white/30">
                     <div className="flex items-center space-x-2 mb-2">
-                      <CreditCard className="w-4 h-4 text-green-400" />
-                      <span className="text-white text-sm font-medium">Total Balance</span>
+                      <div className="w-6 h-6 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center">
+                        <CreditCard className="w-3 h-3 text-white" />
+                      </div>
+                      <span className="text-gray-900 text-sm font-medium">Total Balance</span>
                     </div>
-                    <p className="text-2xl font-bold text-white">$0.00</p>
+                    <p className="text-2xl font-bold text-gray-900">$0.00</p>
                   </div>
-                  <div className="p-4 bg-slate-700/50 rounded-lg">
+                  <div className="p-4 bg-white/30 rounded-xl border border-white/30">
                     <div className="flex items-center space-x-2 mb-2">
-                      <TrendingUp className="w-4 h-4 text-purple-400" />
-                      <span className="text-white text-sm font-medium">24h Change</span>
+                      <div className="w-6 h-6 bg-gradient-to-br from-purple-400 to-blue-400 rounded-full flex items-center justify-center">
+                        <TrendingUp className="w-3 h-3 text-white" />
+                      </div>
+                      <span className="text-gray-900 text-sm font-medium">24h Change</span>
                     </div>
-                    <p className="text-2xl font-bold text-green-400">+0.00%</p>
+                    <p className="text-2xl font-bold text-green-500">+0.00%</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Quick Actions */}
-            <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
+            <Card className="bg-white/20 border-white/30 backdrop-blur-xl shadow-xl">
               <CardHeader>
-                <CardTitle className="text-white">Quick Actions</CardTitle>
+                <CardTitle className="text-gray-900">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Button
                     onClick={() => setShowCreateAccountDialog(true)}
-                    className="w-full bg-blue-600 hover:bg-blue-700 h-12"
+                    className="w-full bg-black hover:bg-gray-900 text-white h-12"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Create New Wallet
                   </Button>
                   <Button
                     variant="outline"
-                    className="w-full border-slate-600 text-white hover:bg-slate-700 h-12"
+                    className="w-full border-gray-300 text-gray-900 hover:bg-gray-100 h-12"
                   >
                     <Activity className="w-4 h-4 mr-2" />
                     View Activity
@@ -218,10 +230,12 @@ export default function Dashboard() {
             </Card>
 
             {/* Recent Activity */}
-            <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
+            <Card className="bg-white/20 border-white/30 backdrop-blur-xl shadow-xl">
               <CardHeader>
-                <CardTitle className="text-white flex items-center space-x-2">
-                  <Activity className="w-5 h-5 text-green-400" />
+                <CardTitle className="text-gray-900 flex items-center space-x-2">
+                  <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center">
+                    <Activity className="w-4 h-4 text-white" />
+                  </div>
                   Recent Activity
                 </CardTitle>
               </CardHeader>
@@ -229,20 +243,22 @@ export default function Dashboard() {
                 <div className="space-y-4">
                   {vaults.length === 0 ? (
                     <div className="text-center py-8">
-                      <Wallet className="w-12 h-12 text-slate-500 mx-auto mb-4" />
-                      <p className="text-slate-400">No wallets yet. Create your first wallet to get started.</p>
+                      <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-red-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Wallet className="w-8 h-8 text-white" />
+                      </div>
+                      <p className="text-gray-600">No wallets yet. Create your first wallet to get started.</p>
                     </div>
                   ) : (
                     <div className="space-y-3">
                       {vaults.slice(0, 3).map((vault) => (
-                        <div key={vault.id} className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg">
+                        <div key={vault.id} className="flex items-center justify-between p-3 bg-white/30 rounded-xl border border-white/30">
                           <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center">
-                              <Wallet className="w-4 h-4 text-blue-400" />
+                            <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-red-400 rounded-full flex items-center justify-center">
+                              <Wallet className="w-5 h-5 text-white" />
                             </div>
                             <div>
-                              <p className="text-white text-sm font-medium">{vault.label}</p>
-                              <p className="text-slate-400 text-xs">
+                              <p className="text-gray-900 text-sm font-medium">{vault.label}</p>
+                              <p className="text-gray-600 text-xs">
                                 {vault.address ? `${vault.address.slice(0, 6)}...${vault.address.slice(-4)}` : 'Address not available'}
                               </p>
                             </div>
@@ -251,7 +267,7 @@ export default function Dashboard() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleWalletSelect(vault)}
-                            className="text-blue-400 hover:text-blue-300"
+                            className="text-gray-900 hover:bg-black hover:text-white"
                           >
                             Open
                           </Button>
@@ -267,15 +283,15 @@ export default function Dashboard() {
           {/* Right Column - Wallet List & Security */}
           <div className="space-y-6">
             {/* Wallet List */}
-            <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
+            <Card className="bg-white/20 border-white/30 backdrop-blur-xl shadow-xl">
               <CardHeader>
-                <CardTitle className="text-white flex items-center justify-between">
+                <CardTitle className="text-gray-900 flex items-center justify-between">
                   <span>Your Wallets</span>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowCreateAccountDialog(true)}
-                    className="text-blue-400 hover:text-blue-300"
+                    className="text-gray-900 hover:bg-black hover:text-white"
                   >
                     <Plus className="w-4 h-4" />
                   </Button>
@@ -285,24 +301,26 @@ export default function Dashboard() {
                 <div className="space-y-2">
                   {vaults.length === 0 ? (
                     <div className="text-center py-6">
-                      <Wallet className="w-8 h-8 text-slate-500 mx-auto mb-2" />
-                      <p className="text-slate-400 text-sm">No wallets yet</p>
+                      <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-red-400 rounded-full flex items-center justify-center mx-auto mb-2">
+                        <Wallet className="w-6 h-6 text-white" />
+                      </div>
+                      <p className="text-gray-600 text-sm">No wallets yet</p>
                     </div>
                   ) : (
                     vaults.map((vault) => (
                       <div
                         key={vault.id}
                         onClick={() => handleWalletSelect(vault)}
-                        className="p-3 rounded-lg cursor-pointer transition-colors bg-slate-700/50 hover:bg-slate-600/50"
+                        className="p-3 rounded-xl cursor-pointer transition-colors bg-white/30 border border-white/30 hover:bg-white/40"
                       >
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-white text-sm font-medium">{vault.label}</p>
-                            <p className="text-slate-400 text-xs">
+                            <p className="text-gray-900 text-sm font-medium">{vault.label}</p>
+                            <p className="text-gray-600 text-xs">
                               {vault.address ? `${vault.address.slice(0, 6)}...${vault.address.slice(-4)}` : 'Address not available'}
                             </p>
                           </div>
-                          <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                          <div className="w-2 h-2 bg-gradient-to-br from-orange-400 to-red-400 rounded-full"></div>
                         </div>
                       </div>
                     ))
@@ -312,49 +330,57 @@ export default function Dashboard() {
             </Card>
 
             {/* Security Overview */}
-            <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
+            <Card className="bg-white/20 border-white/30 backdrop-blur-xl shadow-xl">
               <CardHeader>
-                <CardTitle className="text-white flex items-center space-x-2">
-                  <Shield className="w-5 h-5 text-blue-400" />
+                <CardTitle className="text-gray-900 flex items-center space-x-2">
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full flex items-center justify-center">
+                    <Shield className="w-4 h-4 text-white" />
+                  </div>
                   Security Overview
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg">
+                  <div className="flex items-center justify-between p-3 bg-white/30 rounded-xl border border-white/30">
                     <div className="flex items-center space-x-2">
-                      <Shield className="w-4 h-4 text-green-400" />
-                      <span className="text-white text-sm">Account Security</span>
+                      <div className="w-6 h-6 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center">
+                        <Shield className="w-3 h-3 text-white" />
+                      </div>
+                      <span className="text-gray-900 text-sm">Account Security</span>
                     </div>
-                    <Badge className="bg-green-500/20 text-green-400 border-green-500/50">Active</Badge>
+                    <Badge className="bg-green-500/20 text-green-600 border-green-500/50">Active</Badge>
                   </div>
                   
-                  <div className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg">
+                  <div className="flex items-center justify-between p-3 bg-white/30 rounded-xl border border-white/30">
                     <div className="flex items-center space-x-2">
-                      <Key className="w-4 h-4 text-blue-400" />
-                      <span className="text-white text-sm">Passkey Security</span>
+                      <div className="w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full flex items-center justify-center">
+                        <Key className="w-3 h-3 text-white" />
+                      </div>
+                      <span className="text-gray-900 text-sm">Passkey Security</span>
                     </div>
                     {passkeys.length > 0 ? (
-                      <Badge className="bg-green-500/20 text-green-400 border-green-500/50">
+                      <Badge className="bg-green-500/20 text-green-600 border-green-500/50">
                         {passkeys.length} Configured
                       </Badge>
                     ) : (
-                      <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/50">Not Set</Badge>
+                      <Badge className="bg-yellow-500/20 text-yellow-600 border-yellow-500/50">Not Set</Badge>
                     )}
                   </div>
                   
-                  <div className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg">
+                  <div className="flex items-center justify-between p-3 bg-white/30 rounded-xl border border-white/30">
                     <div className="flex items-center space-x-2">
-                      <AlertTriangle className="w-4 h-4 text-yellow-400" />
-                      <span className="text-white text-sm">Backup Status</span>
+                      <div className="w-6 h-6 bg-gradient-to-br from-yellow-400 to-orange-400 rounded-full flex items-center justify-center">
+                        <AlertTriangle className="w-3 h-3 text-white" />
+                      </div>
+                      <span className="text-gray-900 text-sm">Backup Status</span>
                     </div>
-                    <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/50">Recommended</Badge>
+                    <Badge className="bg-yellow-500/20 text-yellow-600 border-yellow-500/50">Recommended</Badge>
                   </div>
 
                   {passkeys.length === 0 && (
                     <Button
                       variant="outline"
-                      className="w-full border-slate-600 text-white hover:bg-slate-700 h-12"
+                      className="w-full border-gray-300 text-gray-900 hover:bg-black hover:text-white h-12"
                       onClick={handleCreatePasskey}
                     >
                       <Key className="w-4 h-4 mr-2" />

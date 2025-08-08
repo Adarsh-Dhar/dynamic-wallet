@@ -86,20 +86,22 @@ export default function CreateAccountDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-slate-800/90 border-slate-700 backdrop-blur-sm">
+      <DialogContent className="bg-white/20 border-white/20 backdrop-blur-xl">
         <DialogHeader>
-          <DialogTitle className="text-white flex items-center space-x-2">
-            <Wallet className="w-5 h-5" />
+          <DialogTitle className="text-gray-900 flex items-center space-x-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-red-400 rounded-full flex items-center justify-center">
+              <Wallet className="w-4 h-4 text-white" />
+            </div>
             <span>Create New Account</span>
           </DialogTitle>
-          <DialogDescription className="text-slate-400">
+          <DialogDescription className="text-gray-900">
             Create a new Ethereum wallet with a unique name. This will generate a new keypair for you.
           </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="account-name" className="text-white">
+            <Label htmlFor="account-name" className="text-gray-900">
               Account Name
             </Label>
             <Input
@@ -108,28 +110,28 @@ export default function CreateAccountDialog({
               onChange={(e) => setAccountName(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Enter account name"
-              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
+              className="bg-white/50 border-white/20 text-gray-900 placeholder:text-gray-500"
               disabled={loading}
             />
             {error && (
-              <p className="text-sm text-red-400">{error}</p>
+              <p className="text-sm text-red-500">{error}</p>
             )}
           </div>
         </div>
 
         <DialogFooter>
           <Button
-            variant="outline"
+            variant="ghost"
             onClick={() => onOpenChange(false)}
             disabled={loading}
-            className="border-slate-600 text-slate-300 hover:bg-slate-700"
+            className="text-slate-900 hover:text-gray-900"
           >
             Cancel
           </Button>
           <Button
             onClick={handleCreateAccount}
             disabled={loading || !accountName.trim()}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-gradient-to-br from-orange-400 to-red-400 text-white hover:from-orange-500 hover:to-red-500"
           >
             {loading ? (
               <>
@@ -147,4 +149,4 @@ export default function CreateAccountDialog({
       </DialogContent>
     </Dialog>
   )
-} 
+}
